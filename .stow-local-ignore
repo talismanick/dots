@@ -1,5 +1,5 @@
 \.git
 misc
 LICENSE
-#^/.*\.org$
+^/.*\.org$
 ^README.*

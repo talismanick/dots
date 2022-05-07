@@ -47,6 +47,7 @@ alias ufw='sudo ufw'
 alias ipsec='sudo ipsec'
 
 alias xkcdpass="xkcdpass | sed 's| |-|g' -"
+alias river="dbus-run-session river"
 
 # rebind iff terminal allows line editing
 
