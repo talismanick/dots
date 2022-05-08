@@ -1,0 +1,30 @@
+[user]
+	name = Nicholas Talin
+        email = talin.nicholas@mailbox.org
+	signingkey = 812FDDCBCDB0FA1FF2B185D259337AD28D2590C0
+[credential]
+        username = talismanick
+[init]
+        defaultBranch = master
+[core]
+        editor = emacsclient
+        excludesfile = ~/.config/git/ignore
+        autocrlf = input
+        safecrlf = true
+[alias]
+        co = checkout
+        ci = commit
+        st = status
+        br = branch
+        hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
+        type = cat-file -t
+        dump = cat-file -p
+
+[merge]
+        conflictstyle=diff3
+[github]
+	user = talismanick
+[gitlab]
+	user = talismanick
+[commit]
+	gpgsign = true
