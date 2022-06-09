@@ -39,7 +39,7 @@ alias reboot='sudo reboot'
 alias poweroff='sudo /sbin/poweroff'
 alias halt='sudo /sbin/halt'
 alias shutdown='sudo /sbin/shutdown'
-alias zzz='sudo zzz'
+alias zzz='doas env XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR}" zzz'
 
 alias virsh='sudo virsh'
 
@@ -47,7 +47,7 @@ alias ufw='sudo ufw'
 alias ipsec='sudo ipsec'
 
 alias xkcdpass="xkcdpass | sed 's| |-|g' -"
-alias river="dbus-run-session river"
+alias river="run-river"
 
 # rebind iff terminal allows line editing
 
