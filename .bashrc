@@ -32,6 +32,7 @@ alias xr='sudo xbps-remove'
 alias xd='xbps-query -x'
 
 alias c='clear'
+alias e='ewhich'
 alias h='history'
 alias j='jobs -l'
 
@@ -123,6 +124,26 @@ map() {
 }
 nsg() {
         netstat -natp | grep -i "${1}"
+}
+ewhich() {
+        # edit scripts with 1 command
+        case $(command -V "$1") in
+        "$1 not found")
+                echo "$1 not found"
+                ;;
+        *"is a shell builtin"*)
+                echo "$1 is a builtin"
+                ;;
+        *"is an alias"*)
+                $EDITOR "$(readlink -f ~/.bashrc)"
+                ;;
+        *"is a shell function"*)
+                $EDITOR "$(readlink -f ~/.bashrc)"
+                ;;
+        *)
+                $EDITOR "$(readlink -f "$(command -v "$1")")"
+                ;;
+        esac
 }
 
 ### global setup function calls
