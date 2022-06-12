@@ -31,6 +31,8 @@ export NOTMUCH_CONFIG="${XDG_CONFIG_HOME}/notmuch/notmuch.conf"
 export PATH="$PATH:${HOME}/.poetry/bin"
 export PYENV_ROOT="${HOME}/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
+export PIP_REQUIRE_VIRTUALENV=1
+export USE_EMOJI=0 # for pipx
 eval "$(pyenv init --path)"
 eval "$(pyenv virtualenv-init -)"
 
