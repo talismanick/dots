@@ -10,6 +10,9 @@ export VISUAL="nt-emacs"
 export EDITOR="$VISUAL"
 export SUDO_EDITOR="$EDITOR"
 
+# Dotfile management (Stow)
+export DOTDIR="${HOME}/.local/dots"
+
 # Void & xbps-src paths
 export XBPS_DISTDIR="${HOME}/.local/void/void-packages"
 export SVDIR="${HOME}/.local/service/"

@@ -3,3 +3,4 @@ misc
 LICENSE
 ^/.*\.org$
 ^README.*
+^\.stow.*
