@@ -3,6 +3,9 @@ nohup.out
 .direnv
 .envrc
 
+### XDG
+.local/bin/*
+
 ### EMACS
 *~
 \#*\#

@@ -163,4 +163,6 @@ eval "$(direnv hook bash)"
 #[ -f "${HOME}/.ghcup/env" ] && source "${HOME}/.ghcup/env" # ghcup-env
 fortune
 
+eval "typeset -u path"
+
 echo -e '\n'
