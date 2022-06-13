@@ -20,6 +20,8 @@
         type = cat-file -t
         dump = cat-file -p
 
+[push]
+	default = current
 [merge]
         conflictstyle=diff3
 [github]
@@ -28,3 +30,5 @@
 	user = talismanick
 [commit]
 	gpgsign = true
+[gpg]
+	program = gpg2
