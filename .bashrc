@@ -12,7 +12,6 @@ alias ls='ls --color=auto -h'
 alias ll='ls -la '
 
 alias mkdir='mkdir -pv'
-alias rm='srm'
 alias grep='rg --color=auto'
 alias untar='tar -zxvf'
 alias sha='shasum -a 256'
