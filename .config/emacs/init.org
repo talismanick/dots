@@ -1,0 +1,1944 @@
+#+title: talismanick's Emacs init.{org,el}
+#+author: Nick Talin (talismanick) <talin.nicholas@mailbox.org>
+#+auto_tangle: yes
+* table of contents                                                     :TOC:
+- [[#startup][startup]]
+  - [[#packaging][packaging]]
+  - [[#windowing][windowing]]
+  - [[#rice][rice]]
+  - [[#misc][misc]]
+- [[#search--navigation][search & navigation]]
+  - [[#visual][visual]]
+  - [[#textual][textual]]
+  - [[#file][file]]
+  - [[#help][help]]
+- [[#editing][editing]]
+  - [[#general][general]]
+  - [[#programming][programming]]
+  - [[#typesetting--markup][typesetting & markup]]
+- [[#system][system]]
+  - [[#services][services]]
+  - [[#desktop][desktop]]
+  - [[#shell][shell]]
+  - [[#containers][containers]]
+  - [[#source-control--projects][source control & projects]]
+  - [[#docs][docs]]
+  - [[#media][media]]
+  - [[#internet][Internet]]
+  - [[#performance][performance]]
+
+* startup
+** packaging
+#+begin_src emacs-lisp :tangle yes
+  (defvar bootstrap-version)
+  (let ((bootstrap-file
+         (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+        (bootstrap-version 5))
+    (unless (file-exists-p bootstrap-file)
+      (with-current-buffer
+          (url-retrieve-synchronously
+           "https://raw.githubusercontent.com/raxod502/straight.el/develop/install.el"
+           'silent 'inhibit-cookies)
+        (goto-char (point-max))
+        (eval-print-last-sexp)))
+    (load bootstrap-file nil 'nomessage))
+  (setq straight-use-package-by-default t)
+  (straight-use-package 'use-package)
+#+end_src
+GC hack needs to go at start of init
+#+begin_src emacs-lisp :tangle yes
+  (setq read-process-output-max (* 1024 1024))
+  (use-package gcmh
+    :demand t
+    :custom
+    (gcmh-high-cons-threshold #x6400000) ; 100MB
+    :config (gcmh-mode 1))
+  (add-hook 'emacs-startup-hook
+            (lambda ()
+              (shell-command "notify-send 'Emacs loaded'")
+              (message "Emacs ready in %s seconds with %d garbage collections"
+                       (format "%.2f seconds"
+                               (float-time
+                                (time-subtract after-init-time before-init-time)))
+                       gcs-done)))
+#+end_src
+** windowing
+Always use frames; let the window manager handle layout.
+#+begin_src emacs-lisp :tangle yes
+  (use-package frames-only-mode
+    :demand t
+    :custom
+    (frames-only-mode-use-windows-for-completion nil)
+    (frames-only-mode-kill-frame-when-buffer-killed-buffer-list
+     '("*RefTeX Select*" "*Help*" "*Popup Help*" "*Completions*" "*Man*"))
+    :config
+    (frames-only-mode 1))
+  (use-package shackle
+    :custom
+    ;; (shackle-default-rule '((".*" :other-frame t)))
+    (shackle-rules '(("\\*BQN keymap\\*" :regexp t :frame t :noselect t)
+                     ))
+    :hook
+    (after-init . shackle-mode))
+#+end_src
+
+** rice
+#+begin_src emacs-lisp :tangle yes
+  (tool-bar-mode 0)
+  (menu-bar-mode 0)
+  (setq scroll-bar-mode nil)
+  (push '(undecorated . t) default-frame-alist)
+  (use-package doom-themes
+    :demand t
+    :config
+    (load-theme
+     (if (file-exists-p "~/.local/run/etheme.el")
+         (let ((theme (with-temp-buffer
+                        (insert-file-contents "~/.local/run/etheme.el")
+                        (emacs-lisp-mode)
+                        (goto-char (point-max))
+                        (backward-sexp)
+                        (eval (sexp-at-point)))))
+           (require (car theme) nil 'noerror)
+           (cdr theme))
+       'doom-plain-dark)
+     t)
+    :custom
+    (frame-inhibit-implied-resize t)
+    :hook
+    (after-init . (lambda () (scroll-bar-mode 0)))
+    :custom-face
+    (default ((t (:family "PT Mono"
+                          :height 100
+                          :slant normal
+                          :weight normal
+                          :width normal))))
+    (fixed-pitch ((t (:inherit default)))))
+
+  (use-package fringe
+    :straight nil
+    :config
+    ;; minimal fringe
+    (fringe-mode 0))
+  (use-package doom-modeline
+    :custom
+    (doom-modeline-minor-modes t)
+    (doom-modeline-height 20)
+    :hook
+    (after-init . doom-modeline-mode)
+    :custom-face
+    (mode-line ((nil (:height 0.9 :weight extralight))))
+    (mode-line-inactive ((nil (:height 0.9 :weight extralight)))))
+  (use-package minions
+    :custom
+    (minions-mode-line-lighter "☰")
+    :hook
+    (doom-modeline-mode . minions-mode))
+  (use-package time
+    :custom
+    (display-time-load-average-threshold nil)
+    :hook
+    (doom-modeline . display-time-mode))
+  (use-package ivy-posframe
+    :disabled
+    :after ivy
+    :custom
+    (ivy-posframe-display-functions-alist
+     '((imenu           . ivy-posframe-display-at-frame-center)
+       (counsel-imenu           . ivy-posframe-display-at-frame-center)
+       (swiper          . ivy-posframe-display-at-point)
+       (complete-symbol . ivy-posframe-display-at-point)
+       (counsel-company . ivy-posframe-display-at-point)
+       (ivy-switch-buffer . ivy-posframe-display-at-window-center)
+       (dmenu . ivy-posframe-display-at-frame-center)
+       (counsel-find-file . ivy-posframe-display-at-frame-center)
+       (counsel-explorer . ivy-posframe-display-at-frame-center)
+       (ivy-explorer . ivy-posframe-display-at-frame-center)
+       (Info-menu . ivy-posframe-display-at-window-center)
+       (t               . ivy-posframe-display-at-frame-center)))
+    (ivy-posframe-parameters '((alpha  60)))
+    (ivy-posframe-border-width 1)
+    (ivy-posframe-style 'point)
+    :custom-face
+    (internal-border ((t (:background "black"))))
+    (ivy-posframe-border ((t (:background "black"))))
+    :config
+    (ivy-posframe-mode 1)
+    (add-function :after after-focus-change-function #'posframe-delete-all))
+  (use-package company-posframe
+    :disabled t
+    :after company
+    :config
+    (company-posframe-mode 1))
+  (use-package flycheck-posframe
+    :after flycheck
+    :config
+    (flycheck-posframe-mode 1))
+  (use-package which-key-posframe
+    :after which-key
+    :config
+    (which-key-posframe-mode 1))
+  (use-package transient-posframe
+    :after transient
+    :config
+    (transient-posframe-mode 1))
+  (use-package hydra-posframe
+    :straight (hydra-posframe :type git :host github :repo "Ladicle/hydra-posframe")
+    :after hydra
+    :custom
+    (hydra-posframe-border-width 1)
+    (hydra-posframe-parameters '((alpha 60)))
+    :config (hydra-posframe-mode 1)
+    :custom-face
+    (hydra-posframe-border-face ((t (:background "#9e9e9e")))))
+  (use-package rainbow-mode
+    :hook
+    ((prog-mode org-mode) . rainbow-mode)
+    ((c-mode c++-mode) . (lambda () (rainbow-mode -1))))
+#+end_src
+#+begin_src shell :tangle ../../.local/bin/chtheme :shebang "#!/bin/sh"
+  chtheme() {
+      # change GTK theme
+      gsettings set org.gnome.desktop.interface gtk-theme "${1}"
+      # change icon theme
+      gsettings set org.gnome.desktop.interface icon-theme "${2}"
+      # change font
+      gsettings set org.gnome.desktop.interface font-name "${3}"
+
+      # change wallpaper
+      printf "PIC=%s/Pictures/wallpapers/%s\n" "${HOME}" "${4}" \
+             > "${SVDIR}/wbg/picture"
+      sv restart wbg
+      # set focused border color
+      riverctl border-color-focused "${5}"
+      # set unfocused border color
+      riverctl border-color-unfocused "${6}"
+
+      # let emacs load the theme package and theme name from a file on startup
+      printf "(setq ch-pkg '%s)\n(setq ch-theme '%s)" "${7}" "${8}" \
+             > "${HOME}/.local/run/etheme.el"
+      # actively try loading theme for 10 seconds
+      timeout 10 emacsclient -e "(require '${7} nil 'noerror)(load-theme '${8} t)" &
+
+      # TODO: switch yambar config on $9 and fnott on $10
+  }
+
+  case "$1" in
+      "sakura" )
+          chtheme vimix-dark-laptop Vimix-dark 'Cantarell 11' \
+                  void-mountain.jpg 0xc9e9e9e 0x7d7d7d \
+                  doom-themes doom-sakura
+          ;;
+      "gondola" )
+          chtheme vimix-dark-laptop-amethyst Vimix-dark 'Cantarell 11' \
+                  gondola-sitting-on-moon.jpg 0xd49bdb 0x9a83df \
+                  doom-themes doom-Iosvkem
+          ;;
+      ,*)
+          printf "%s is not a valid theme\n" "$1" && return 1
+  esac
+#+end_src
+** misc
+#+begin_src emacs-lisp :tangle yes
+  (defun nt/no-line-numbers ()
+    (display-line-numbers-mode 0))
+  (if (and (fboundp 'server-running-p)
+           (not (server-running-p)))
+      (server-start))
+  (setq custom-file  "/dev/null"
+        initial-major-mode 'fundamental-mode
+        custom-safe-themes t)
+  (global-set-key (kbd "<escape>") #'keyboard-escape-quit)
+  (global-set-key (kbd "M-+") #'text-scale-increase)
+  (global-set-key (kbd "M--") #'text-scale-decrease)
+#+end_src
+CRUX (Collection of Ridiculously Useful eXtensions) bundles commands which don't fit elsewhere
+#+begin_src emacs-lisp :tangle yes
+  (use-package crux)
+#+end_src
+Personal info
+#+begin_src emacs-lisp :tangle yes
+  (setq user-full-name "Nick Talin"
+        user-mail-address "talin.nicholas@mailbox.org")
+
+#+end_src
+* search & navigation
+** visual
+#+begin_src emacs-lisp :tangle yes
+  (use-package ace-window
+    :custom
+    (aw-keys '(?a ?s ?d ?f ?g ?h ?j ?k ?l))
+    (aw-scope 'frame)
+    (aw-background nil)
+    :preface
+    (defun nt/ace-resize (to)
+      "Move to a window TO, then resize with golden-ratio"
+      (interactive "p")
+      (require 'golden-ratio nil 'noerror)
+      (ace-window-display-mode 1)
+      (ace-window to)
+      (ace-window-display-mode 0)
+      (when (fboundp 'golden-ratio)
+       (golden-ratio)))
+    :bind
+    ("C-x o" . nt/ace-resize)
+    ("C-x O" . ace-delete-window))
+  (use-package golden-ratio
+    :disabled t
+    :after ace-window
+    :config
+    (golden-ratio-mode 1))
+#+end_src
+Fix scrolling
+#+begin_src emacs-lisp :tangle yes
+  (use-package good-scroll
+    :hook
+    (after-init . good-scroll-mode)
+    :config
+    (global-set-key [next] #'good-scroll-up-full-screen)
+    (global-set-key [prior] #'good-scroll-down-full-screen))
+  (use-package scroll-on-jump
+    :custom
+    (scroll-on-jump-smooth nil)
+    (scroll-on-jump-duration 0.1337)
+    :preface
+    :bind
+    ("C-M-f" .  (lambda ()
+                  (interactive)
+                  (scroll-on-jump (call-interactively #'paredit-forward))))
+    ("C-M-b" .  (lambda ()
+                  (interactive)
+                  (scroll-on-jump (call-interactively #'paredit-backward))))
+    :config
+    (scroll-on-jump-advice-add beginning-of-buffer)
+    (scroll-on-jump-advice-add end-of-buffer)
+    (scroll-on-jump-advice-add flyspell-goto-next-error)
+    (scroll-on-jump-with-scroll-advice-add scroll-up-command)
+    (scroll-on-jump-with-scroll-advice-add scroll-down-command)
+    (scroll-on-jump-with-scroll-advice-add isearch-update)
+    (scroll-on-jump-with-scroll-advice-add recenter-top-bottom))
+  (use-package sublimity
+    :custom
+    (sublimity-scroll-weight 5)
+    (sublimity-scroll-drift-length 10)
+    :config
+    (require 'sublimity-scroll)
+    (sublimity-mode 1))
+  (use-package scrollkeeper
+    :disabled t
+    :straight (scrollkeeper :type git :host github :repo "alphapapa/scrollkeeper.el")
+    :bind (([remap scroll-up-command] . #'scrollkeeper-contents-up)
+           ([remap scroll-down-command] . #'scrollkeeper-contents-down)))
+  (use-package scroll-on-drag
+    :preface
+    (defvar nt/drag-mouse-scroll-mode nil)
+    (defun nt/drag-mouse-scroll-mode (&optional arg)
+      (interactive)
+      (let ((status (or arg (null nt/drag-mouse-scroll-mode))))
+        (global-set-key [down-mouse-1]
+                        (if status
+                            (lambda ()
+                              (interactive)
+                              (unless (scroll-on-drag)
+                                (mouse-yank-primary t)))
+                          #'mouse-drag-region))
+        (setq nt/drag-mouse-scroll-mode status))))
+#+end_src
+** textual
+#+begin_src emacs-lisp :tangle yes
+  (use-package imenu
+    :bind ("C-." . imenu))
+  (use-package ivy
+    :custom
+    (ivy-use-virtual-buffers t)
+    (enable-recursive-minibuffers t)
+    (ivy-use-selectable-prompt t)
+    (ivy-initial-inputs-alist nil)
+    :preface
+    (defun nt/ivy-toggle-mark ()
+      "Toggle mark for current candidate and move forwards"
+      (interactive)
+      (if (ivy--marked-p)
+          (ivy-unmark)
+        (ivy-mark)))
+    :bind
+    (:map ivy-minibuffer-map
+          ("C-M-a" . nt/ivy-toggle-marks)
+          ("M-a" . nt/ivy-toggle-mark))
+    :hook
+    (after-init . ivy-mode))
+  (use-package counsel
+    :custom
+    (counsel-root-command (if (and (file-exists-p "/usr/bin/doas")
+                                   (file-executable-p "/usr/bin/doas"))
+                              "doas"
+                            "sudo"))
+    :preface
+    (defun nt/counsel-yank-or-yank-pop (&optional arg)
+      "Call `counsel-yank'. If called after a yank, call `counsel-yank-pop' instead."
+      (interactive "*p")
+      (if (eq last-command 'yank)
+          (counsel-yank-pop arg)
+        (yank)))
+    :hook
+    (after-init . counsel-mode)
+    :bind
+    ("C-s" . swiper)
+    ("C-y" . nt/counsel-yank-or-yank-pop)
+    ("C-x C-b" . counsel-switch-buffer)
+    ("C-c o" . counsel-find-file-extern)
+    :config
+    (push "webm" counsel-find-file-extern-extensions))
+  (use-package ivy-prescient
+    :hook
+    (ivy-mode . ivy-prescient-mode))
+  (use-package ivy-rich
+    :after ivy
+    :config
+    (ivy-rich-mode 1))
+#+end_src
+Grep from Emacs rather than command line.
+#+begin_src emacs-lisp :tangle yes
+  (use-package rg
+    :hook
+    (after-init . rg-enable-menu))
+#+end_src
+** file
+#+begin_src emacs-lisp :tangle yes
+  (use-package ivy-explorer
+    :disabled t
+    :commands (ivy-explorer ivy-explorer-mode)
+    :hook
+    (after-init . ivy-explorer-mode))
+  (use-package dired-x
+    :straight nil
+    :custom
+    (dired-guess-shell-alist-user
+     '(("\\.e?ps$" "zathura") ;;  "lpr"
+       ;; ("\\.chm$" "xchm")
+       ("\\.rar$" "unar")
+       ("\\.e?ps\\.g?z$" "gunzip -qc * | zathura -")
+       ("\\.pdf$" "zathura")
+       ("\\.flv$" "mpv")
+       ("\\.mov$" "mpv")
+       ("\\.3gp$" "mpv")
+       ("\\.avi$" "mpv")
+       ("\\.webm$" "mpv"))))
+  ;; (use-package runner)
+  (use-package unify-opening
+    :config
+    (with-eval-after-load "mm-decode"
+      (unify-opening-setup-for-mm-decode))
+    (with-eval-after-load "org"
+      (unify-opening-setup-for-org))
+    (with-eval-after-load "dired-x"
+      (unify-opening-setup-for-dired-x))
+    (with-eval-after-load "counsel"
+      (unify-opening-setup-for-counsel)))
+
+#+end_src
+** help
+see which keys are which in real time
+#+begin_src emacs-lisp :tangle yes
+  (use-package which-key
+    :config
+    (which-key-mode 1))
+#+end_src
+Bind keymaps to shorten repetitive sequences.
+#+begin_src emacs-lisp :tangle yes
+  (use-package hydra)
+  (use-package hercules)
+#+end_src
+* editing
+** general
+#+begin_src emacs-lisp :tangle yes
+  (defalias 'yes-or-no-p 'y-or-n-p)
+  (use-package files
+    :straight nil
+    :custom
+    (backup-directory-alist  '(("." . "~/.saves")))
+    (backup-by-copying t)
+    (delete-old-versions t)
+    (kept-new-versions 6)
+    (kept-old-versions 2)
+    (version-control t))
+  (prefer-coding-system 'utf-8)
+  (set-default-coding-systems 'utf-8)
+  (set-language-environment "UTF-8")
+
+  (setq make-backup-files nil)
+  (setq require-final-newline t)
+
+  (setq-default indent-tabs-mode nil)
+  (electric-pair-mode 1)
+
+  (use-package compile
+    :straight nil
+    :custom
+    (compilation-scroll-output t)
+    :preface
+    (defun nt/quick-compile ()
+      "Compile without fuss."
+      (interactive)
+      (setq-local compilation-read-command nil)
+      (call-interactively #'compile)))
+
+  (use-package rainbow-delimiters
+    :preface
+    (defun nt/rainbow-delimiters-oneshot ()
+      "Turn rainbow-delimiters on and off to color parentheses without
+  triggering mismatched delimiter bugs."
+      (interactive)
+      (rainbow-delimiters-enable)
+      (rainbow-delimiters-disable))
+    :hook
+    ((prog-mode comint-mode) . rainbow-delimiters-mode)
+    (org-mode . nt/rainbow-delimiters-oneshot))
+
+  (use-package prescient
+    :custom
+    (prescient-filter-method  '(literal regexp initialism)))
+
+  (use-package multiple-cursors
+    :bind (("C-c m m" . #'mc/edit-lines )
+           ("C-c m d" . #'mc/mark-all-dwim )))
+
+  (defun nt/kill-region-or-backward-word ()
+    "If the region is active and non-empty, call `kill-region'.
+           Otherwise, call `backward-kill-word'."
+    (interactive)
+    (call-interactively
+     (if (use-region-p) 'kill-region 'backward-kill-word)))
+  (global-set-key (kbd "C-w") #'nt/kill-region-or-backward-word)
+#+end_src
+*** Structural
+#+begin_src emacs-lisp :tangle yes
+  (use-package paredit-everywhere
+    :hook
+    ((prog-mode comint-mode org-mode) . paredit-everywhere-mode)
+    (latex-mode . (lambda () (paredit-everywhere-mode nil))))
+  (use-package tree-sitter
+    :hook
+    (latex-mode . tree-sitter-mode))
+  (use-package tree-sitter-langs)
+#+end_src
+*** Input methods
+#+begin_src emacs-lisp :tangle yes
+  (use-package insert-kaomoji
+    :commands (insert-kaomoji insert-kaomoji-into-kill-ring))
+#+end_src
+*** Formatting
+#+begin_src emacs-lisp :tangle yes
+  (use-package ws-butler
+    :custom
+    (ws-butler-convert-leading-tabs-or-spaces t)
+    :commands (ws-butler-mode)
+    :hook
+    ((prog-mode org-mode text-mode proof-mode bibtex-mode) . ws-butler-mode))
+#+end_src
+** programming
+autocomplete
+#+begin_src emacs-lisp :tangle yes
+  (use-package company
+    :custom
+    (company-minimum-prefix-length 2)
+    (company-idle-delay 0.1)
+    (company-echo-delay 0)
+    :hook
+    (after-init . global-company-mode)
+    :config
+    (company-tng-configure-default))
+  (use-package company-prescient
+    :hook
+    (global-company-mode . company-prescient-mode))
+  (use-package ispell
+    :straight nil
+    :custom
+    (ispell-dictionary "/usr/share/dict/words")
+    (ispell-alternate-dictionary "/usr/share/dict/words"))
+  (use-package company-ispell
+    :disabled t
+    :straight nil
+    :custom
+    (company-ispell-dictionary ispell-dictionary)
+    :preface
+    (defun nt/toggle-company-ispell ()
+      "Toggle company-ispell."
+      (interactive)
+      (cond
+       ((memq 'company-ispell company-backends)
+        (setq company-backends (delete 'company-ispell company-backends))
+        (message "company-ispell disabled"))
+       (t
+        (add-to-list  'company-backends 'company-ispell)
+        (message "company-ispell enabled"))))
+
+    (defun nt/company-ispell-setup ()
+      ;; @see https://github.com/company-mode/company-mode/issues/50
+      (when (boundp 'company-backends)
+        (make-local-variable 'company-backends)
+        (push 'company-ispell company-backends)
+        ;; @see https://github.com/redguardtoo/emacs.d/issues/473
+        (cond
+         ((and (boundp 'ispell-alternate-dictionary)
+               ispell-alternate-dictionary)
+          (setq company-ispell-dictionary ispell-alternate-dictionary))
+         (t
+          (setq company-ispell-dictionary "/usr/share/dict/words")))))
+    :hook
+    (org-mode . nt/company-ispell-setup))
+  (use-package company-dict
+    :disabled t
+    :custom
+    (company-dict-dir (concat user-emacs-directory "dict/"))
+    (company-dict-enable-fuzzy t)
+    (company-dict-enable-yasnippet t)
+    :config
+    (add-to-list 'company-backends 'company-dict))
+#+end_src
+line numbers
+#+begin_src emacs-lisp :tangle yes
+  (add-hook 'prog-mode-hook #'column-number-mode)
+  (add-hook 'prog-mode-hook #'line-number-mode)
+  (add-hook 'prog-mode-hook #'display-line-numbers-mode)
+  (add-hook 'org-mode-hook #'display-line-numbers-mode)
+#+end_src
+cut & paste
+#+begin_src emacs-lisp :tangle yes
+  (use-package yasnippet
+    :custom
+    (yas-prompt-functions '(yas-completing-prompt))
+    :hook (after-init . yas-global-mode))
+  (use-package ivy-yasnippet
+    :bind ("C-;" . ivy-yasnippet))
+  (use-package yasnippet-snippets
+    :after yasnippet)
+#+end_src
+eval-in-place (output in buffer, not in *Messages*)
+#+begin_src emacs-lisp :tangle yes
+  (use-package eros
+    :hook
+    (after-init . eros-mode))
+#+end_src
+*** error catching
+#+begin_src emacs-lisp :tangle yes
+  (use-package warnings
+    :straight nil
+    :custom
+    (warning-suppress-types '((comp))))
+  (use-package flycheck
+    :after prog-mode
+    :config
+    (global-flycheck-mode 1))
+  (use-package lsp-mode
+    :custom
+    (lsp-prefer-flymake nil)
+    (lsp-enable-snippet t)
+    (lsp-keymap-prefix "M-l")
+    (lsp-restart 'ignore)
+
+    (lsp-pyls-plugins-pycodestyle-max-line-length 96)
+    :commands (lsp lsp-deferred)
+    :hook
+    ((c-mode c++-mode python-mode) . lsp)
+    :config
+    (lsp-enable-which-key-integration t))
+  (use-package lsp-ui
+    :after lsp-mode
+    :custom
+    (lsp-ui-imenu-enable t)
+    (lsp-ui-doc-include-signature t)
+    :hook
+    (lsp-mode . lsp-ui-mode)
+    :bind (:map lsp-ui-mode-map
+                ([remap xref-find-definitions] . lsp-ui-peek-find-definitions)
+                ([remap xref-find-references] . lsp-ui-peek-find-references)
+                ([remap imenu] . lsp-ui-imenu)))
+  (use-package lsp-ivy
+    :bind (:map lsp-command-map
+                ("i s" . lsp-ivy-workspace-symbol)
+                ("i g" . lsp-ivy-global-workspace-symbol)
+                ("i r" . lsp-ivy-workspace-folders-remove)))
+#+end_src
+debugging
+#+begin_src emacs-lisp :tangle yes
+  (use-package realgud
+    :commands
+    (realgud:gdb realgud:bashdb realgud:pdb))
+  (use-package rmsbolt
+    :commands rmsbolt-mode
+    :bind (:map rmsbolt-mode-map
+                ("C-c C-c" . nil)
+                ("C-c C-r" . rmsbolt-compile))
+    :hook ((c++-mode
+            c-mode common-lisp-mode
+            tuareg-mode haskell-mode
+            rust-mode ; emacs-lisp-mode
+            python-mode) . rmsbolt-mode))
+#+end_src
+*** languages
+**** numerical
+Fortran
+#+begin_src emacs-lisp :tangle yes
+  (use-package lsp-fortran
+    :straight nil
+    :hook
+    (fortran-mode . lsp-deferred))
+#+end_src
+Julia
+#+begin_src emacs-lisp :tangle yes
+  (use-package julia-snail
+    :hook
+    (julia-mode . julia-snail-mode))
+  (use-package lsp-julia
+    :custom
+    (lsp-julia-package-dir nil)
+    (lsp-julia-flags (list "~/.local/bin-hidden/languageserver.so"))
+    :hook
+    (julia-mode . lsp-deferred))
+#+end_src
+Matlab
+#+begin_src emacs-lisp :tangle yes
+  (use-package matlab-mode
+    :mode ("\\.m\\'" . matlab-mode))
+#+end_src
+***** array
+GNU APL
+#+begin_src emacs-lisp :tangle yes
+  (use-package gnu-apl-mode
+    :commands (gnu-apl gnu-apl-show-keyboard)
+    :mode "\\.apl\\'")
+#+end_src
+Dyalog APL
+#+begin_src emacs-lisp :tangle yes
+  (use-package dyalog-mode
+    :mode "\\.dyalog$")
+#+end_src
+BQN
+#+begin_src emacs-lisp :tangle yes
+     (use-package bqn-mode
+       :straight (bqn-mode  :type git :host github :repo "museoa/bqn-mode")
+       :commands (bqn-mode run-bqn bqn-show-keyboard)
+       :custom
+       (bqn-interpreter-path "cbqn")
+       :preface
+       (defun nt/bqn386-default-face ()
+         (interactive)
+         (setq buffer-face-mode-face '(:family "BQN386 Unicode"))
+         (buffer-face-mode))
+       (defun nt/fairfaxhd-default-face ()
+         (interactive)
+         (setq buffer-face-mode-face '(:family "Fairfax HD" :height 105))
+         (buffer-face-mode))
+       :preface
+       (defun nt/bqn-send-region (beg end)
+         (interactive "r")
+         (append-to-buffer (get-buffer "*BQN*") beg end)
+         (switch-to-buffer-other-window (get-buffer "*BQN*"))
+         (execute-kbd-macro "\C-m"))
+       (defun nt/bqn-print-header ()
+         (with-current-buffer "*BQN*"
+             (insert (shell-command-to-string "figlet -f speed BQN"))))
+       :bind (:map bqn-mode-map ("C-c C-r" . nt/bqn-send-region))
+       :hook
+       ((bqn-mode bqn-inferior-mode bqn-keymap-mode)  . nt/bqn386-default-face)
+       ;; (bqn-inferior-mode . nt/bqn-print-header)
+       ((bqn-mode bqn-inferior-mode)  .  rainbow-delimiters-disable))
+#+end_src
+#+begin_src shell :tangle ../../.local/bin/cbqn :shebang "#!/bin/sh"
+  rlwrap BQN
+#+end_src
+J
+#+begin_src emacs-lisp :tangle yes
+  (use-package j-mode
+    :custom
+    (j-console-cmd "jc")
+    :custom-face
+    (j-verb-face ((t (:foreground "#cacaca"))))
+    (j-adverb-face ((t (:foreground "#fb9a85"))))
+    (j-conjunction-face ((t (:foreground "#f8c3cd" ))))
+    (j-other-face ((t (:foreground "#898989"))))
+    :preface
+
+    (defvar j-pretty-symbols '(("=\\."     . ?←)
+                               ("=:"       . ?⤆)
+                               ("_:"       . ?∞)
+                               ("<:"       . ?≤)
+                               (">:"       . ?≥)
+                               (">\\."     . ?⌈)
+                               ("<\\."     . ?⌊)
+                               ("\\*"      . ?×)
+                               ("%"        . ?÷)
+                               ("\\+\\."   . ?∨)
+                               ("-\\."     . ?¬)
+                               ("*\\."     . ?∧)
+                               ("%\\."     . ?⌹)
+                               ("\\+:"     . ?⍱)
+                               ("-:"       . ?≡)
+                               ("*:"       . ?⍲)
+                               ("%:"       . ?√)
+                               ("\\^\\."   . ?⍟)
+                               ("\\^:"     . ?⍣)
+                               ("\\$"      . ?⍴)
+                               ("\\$\\."   . ?ς)
+                               ("\\$:"     . ?∇)
+                               ("~"        . ?⍨)
+                               ("~\\."     . ?∪)
+                               ("~:"       . ?≠)
+                               ("|\\."     . ?⌽)
+                               ("|:"       . ?⍉)
+                               (",\\."     . ?⍪)
+                               (",:"       . ?⍿)
+                               (";:"       . ?⍧)
+                               ("#\\."     . ?⊥)
+                               ("#:"       . ?⊤)
+                               ("/\\."     . ?⍁)
+                               ("\\\\\\."  . ?⍂)
+                               ("/:"       . ?⍋)
+                               ("\\\\:"    . ?⍒)
+                               ("\\]"      . ?⊢)
+                               ("\\["      . ?⊣)
+                               ("\\[:"     . ?⍅)
+                               ("{\\."     . ?↑)
+                               ("}\\."     . ?↓)
+                               ("{:"       . ?⍏)
+                               ("}:"       . ?⍖)
+                               ("\""       . ?⍤)
+                               ("\"\\."    . ?⍎)
+                               ("\":"      . ?⍕)
+                               ("`"        . ?⍮)
+                               ("@"        . ?⍛)
+                               ("@\\."     . ?⌼)
+                               ("@:"       . ?⍜)
+                               ("\\&"      . ?∘)
+                               ("\\&\\."   . ?↺)
+                               ("\\&\\.>"  . ?¨)
+                               ("\\&:"     . ?⌾)
+                               ("\\?\\."   . ?⍰)))
+    (defvar j-prettify-symbols '(("a." . ?æ)
+                                 ("a:" . ?⍬)
+                                 ("A:" . ?⅍)
+                                 ("C." . ?ℂ)
+                                 ("d." . ?δ)
+                                 ("D." . ?Δ)
+                                 ("D:" . ?⌳)
+                                 ("e." . ?∊)
+                                 ("E." . ?⍷)
+                                 ("f." . ?ℱ)
+                                 ("i." . ?⍳)
+                                 ("i:" . ?ᵼ)
+                                 ("I." . ?⍸)
+                                 ("j." . ?ⅉ)
+                                 ("L." . ?ℒ)
+                                 ("NB." . ?⍝)
+                                 ("p." . ?ℙ)
+                                 ("p:" . ?⅌)
+                                 ("q:" . ?ℚ)
+                                 ("r." . ?∡)
+                                 ("y" . ?ω)
+                                 ("x" . ?α)
+                                 ("u" . ?⍶)
+                                 ("v" . ?⍹)))
+    (defun nt/prettify-j ()
+      (progn
+        (mapcar (lambda (sym) (push sym prettify-symbols-alist)) j-prettify-symbols)
+        (prettify-symbols-mode t)))
+    (defun nt/uglify-j ()
+      (interactive)
+      (progn
+        (mapcar (lambda (sym) (delete sym prettify-symbols-alist)) j-prettify-symbols)
+        (prettify-symbols-mode t)))
+
+
+    :mode  ("\\ij[rstp]$" . j-mode)
+    :commands (j-console)
+    :hook
+    (inferior-j-mode-hook . turn-on-pretty-mode)
+    (inferior-j-mode-hook . nt/prettify-j)
+    (j-mode-hook .  turn-on-pretty-mode)
+    (j-mode-hook . nt/prettify-j)
+    :config
+
+    (pretty-add-keywords 'inferior-j-mode j-pretty-symbols)
+    (pretty-add-keywords 'j-mode j-pretty-symbols))
+#+end_src
+***** statistical
+#+begin_src emacs-lisp :tangle yes
+  (use-package ess
+    :mode (("\\.R\\'"  . ess-mode)
+           ("\\.r\\'"  . ess-mode)))
+#+end_src
+**** text-wrangling
+#+begin_src emacs-lisp :tangle yes
+  (use-package sh-script
+    :mode
+    ("template$"   . sh-mode)
+    ("PKGBUILD$" . sh-mode)
+    ("\\.sh\\'" . sh-mode))
+  (use-package modern-sh
+    :disabled
+    :hook
+    (sh-mode . modern-sh-mode))
+  (use-package sed-mode
+    :mode "\\.sed\\'")
+  (use-package shfmt
+    :bind (:map sh-mode-map ("C-c C-f" . shfmt))
+    :hook (sh-mode . shfmt-on-save-mode))
+#+end_src
+Interactively pipe and transform unstructured textual data.
+#+begin_src emacs-lisp :tangle yes
+  (use-package piper
+    :straight (emacs-piper :type git :host gitlab :repo "howardabrams/emacs-piper"))
+#+end_src
+**** Lisps
+#+begin_src emacs-lisp :tangle yes
+  (use-package paredit
+    :hook ((emacs-lisp-mode
+            common-lisp-mode sly-mrepl-mode
+            scheme-mode geiser-mode racket-mode
+            kbd-mode) . enable-paredit-mode))
+#+end_src
+***** Emacs
+
+***** Common
+#+begin_src emacs-lisp :tangle yes
+  (use-package sly
+    :mode ("\\.lisp\\'" . common-lisp-mode)
+    :commands sly
+    :custom
+    (inferior-lisp-program  "/bin/sbcl")
+    (org-babel-lisp-eval-fn 'sly-eval))
+  (use-package sly-company
+    :after sly)
+#+end_src
+***** Scheme
+#+begin_src emacs-lisp :tangle yes
+  (use-package geiser
+    :after scheme
+    :commands geiser)
+  (use-package geiser-chez
+    :after geiser
+    :commands run-chez)
+  (use-package racket-mode
+    :commands (racket-repl racket-run)
+    :mode ("\\.rkt\\'"))
+#+end_src
+**** functional
+#+begin_src emacs-lisp :tangle yes
+  (use-package haskell-mode
+    :mode ("\\.hs.\\'" . haskell-mode))
+  (use-package lsp-haskell
+    :custom
+    (lsp-haskell-formatting-provider "brittany")
+    :hook
+    ((haskell-mode haskell-literate-mode) . lsp))
+#+end_src
+**** proof
+#+begin_src emacs-lisp :tangle yes
+  (use-package lean-mode
+    :mode "\\.lean\\'")
+  (use-package company-lean
+    :after (company lean))
+  (use-package yasnippet-lean
+    :after lean-mode)
+#+end_src
+**** logic
+#+begin_src emacs-lisp :tangle yes
+  (use-package prolog
+    :mode ("\\.pl\\'" . prolog-mode))
+  (use-package lsp-prolog
+    :disabled t
+    :straight nil
+    :hook
+    (prolog-mode . lsp))
+
+  (use-package metal-mercury-mode
+    :straight (metal-mercury-mode :type git :host github :repo "ahungry/metal-mercury-mode")
+    :mode ("\\.m\\'" . metal-mercury-mode)
+    :init
+    (add-to-list 'load-path "/usr/lib/mercury/elisp/")
+    (autoload 'mdb "gud" "Invoke the Mercury debugger" t))
+  (use-package flycheck-mercury
+    :after metal-mercury-mode)
+#+end_src
+**** distributed
+Erlang
+#+begin_src emacs-lisp :tangle yes
+  (use-package erlang
+    :mode
+    ("\\.erl\\'" . erlang-mode))
+  (use-package lsp-erlang
+    :straight nil
+    :hook
+    (erlang-mode . lsp))
+#+end_src
+Elixir
+#+begin_src emacs-lisp :tangle yes
+  (use-package elixir-mode
+    :mode ("\\.ex[s]\\'" "mix.lock")
+    :bind (:map elixir-mode-map
+                ("C-c C-s" . inferior-elixir)
+                ("C-c C-d" . lsp-ui-doc-show)))
+  (use-package lsp-elixir
+    :straight nil
+    :hook
+    (elixir-mode . lsp))
+  (use-package mix
+    :hook
+    (elixir-mode . mix-minor-mode))
+  (use-package exunit
+    :after (elixir-mode)
+    :commands (nt/mix-format)
+    :preface
+    (defun nt/mix-format ()
+      (interactive)
+      (save-buffer)
+      (shell-command (format "cd %s && mix format %s"
+                             (or
+                              (ignore-errors (exunit-umbrella-project-root))
+                              (exunit-project-root))
+                             (buffer-file-name)))
+      (revert-buffer t t))
+      :bind
+    (:map elixir-mode-map
+          ("C-c , a" . exunit-verify-all)
+          ("C-c , A" . exunit-verify-all-in-umbrella)
+          ("C-c , s" . exunit-verify-single)
+          ("C-c , v" . exunit-verify)
+          ("C-c , r" . exunit-rerun)
+          ("C-c i" . nt/mix-format)))
+#+end_src
+**** imperative
+***** systems
+#+begin_src emacs-lisp :tangle yes
+  (use-package cc-mode
+    :straight nil)
+  (use-package lsp-clangd
+    :straight nil
+    :after cc-mode
+    :config
+    (setq-default flycheck-disabled-checkers '(c/c++-clang c/c++-cppcheck c/c++-gcc))
+    (add-to-list  'lsp-enabled-clients 'clangd))
+#+end_src
+***** scripting
+Python
+#+begin_src emacs-lisp :tangle yes
+  (use-package python
+    :straight nil
+    :commands (run-python python-mode)
+    :custom
+    (python-shell-completion-native-enable nil)
+    (python-shell-interpreter (concat user-emacs-directory "run-python.sh")))
+  (use-package poetry
+    :disabled
+    :commands (poetry)
+    :hook
+    (python-mode . poetry-tracking-mode)
+    (poetry-tracking-mode . (lambda ()
+                              (lsp-workspace-restart (lsp--read-workspace))))
+    :config
+    (setenv "WORKON_HOME" "~/.cache/pypoetry/virtualenvs"))
+  (use-package pyvenv
+    :custom
+    (pyvenv-post-activate-hooks
+     (list (lambda ()
+             (setq python-shell-interpreter (or (ffap-file-exists-string (concat pyvenv-virtual-env "bin/python3"))
+                                                (ffap-file-exists-string (concat (shell-command "poetry env list --full-path" "bin/python3")))
+                                                (ffap-file-exists-string "/usr/bin/python3"))))))
+    (pyvenv-post-deactivate-hooks
+     (list (lambda ()
+             (setq python-shell-interpreter "python3"))))
+    :preface
+    (defun pyvenv () nil)
+    :hook
+    (after-init . (pyvenv-mode pyvenv-tracking-mode)))
+  (use-package lsp-jedi
+    ;; :hook (python-mode . lsp)
+    :config
+    (with-eval-after-load "lsp-mode"
+      (add-to-list 'lsp-disabled-clients 'pyls)
+      (add-to-list 'lsp-enabled-clients 'jedi)))
+
+#+end_src
+
+#+begin_src shell :tangle ../../.local/bin/nt-run-python   :shebang "#!/bin/sh"
+  start="${PWD}"
+
+  while true; do
+      if [ -e pyproject.toml ]; then
+          exec poetry run python "$@"
+      elif [ / = "${PWD}" ]; then
+          cd "${start}"  || exit
+          exec ${RUN_PYTHON:-python3} "$@"
+      else
+          cd ..
+      fi
+  done
+#+end_src
+**** computer algebra & data visualization
+Maxima
+#+begin_src emacs-lisp :tangle yes
+  (use-package maxima
+    :custom
+    (maxima-display-maxima-buffer nil)
+    ;;(org-format-latex-options (plist-put org-format-latex-options :scale 2.0))
+    :hook
+    (maxima-inferior-mode . maxima-hook-function)
+    :init
+    (require 'maxima-font-lock)
+    :mode ("\\.mac\\'" . maxima-mode)
+    :interpreter ("maxima" . maxima-mode))
+  (use-package company-maxima
+    :config
+    (add-to-list 'company-backends '(company-maxima-symbols company-maxima-libraries)))
+#+end_src
+**** data exchange & configuration
+XML & derivatives
+ #+begin_src emacs-lisp :tangle yes
+   (use-package yaml-mode
+     :mode ("\\.yaml\\'" . yaml-mode))
+ #+end_src
+JS object notation
+#+begin_src emacs-lisp :tangle yes
+  (use-package json-mode
+    :mode ("\\.json\\'" . json-mode))
+#+end_src
+Crontab files
+#+begin_src emacs-lisp :tangle yes
+  (use-package crontab-mode)
+#+end_src
+** typesetting & markup
+*** ligatures & fontification
+#+begin_src emacs-lisp :tangle yes
+  (use-package pretty-mode)
+#+end_src
+Display unicode correctly...
+#+begin_src emacs-lisp :tangle yes
+  (use-package persistent-soft)
+  (use-package unicode-fonts
+    :hook
+    (after-init . unicode-fonts-setup))
+#+end_src
+except for emojis
+#+begin_src emacs-lisp :tangle yes
+  (use-package no-emoji
+    :commands (no-emoji-minor-mode global-no-emoji-minor-mode)
+    :hook
+    (circe-channel-mode . no-emoji-minor-mode))
+#+end_src
+*** LaTeX
+#+begin_src emacs-lisp :tangle yes
+  (straight-use-package 'auctex)
+  (use-package tex-site
+    :straight nil
+    :custom
+    (TeX-auto-save t)
+    (TeX-parse-self t)
+    (TeX-save-query nil)
+    (TeX-view-program-selection '((output-pdf "zathura")
+                                  (output-dvi "zathura")))
+    (TeX-view-program-list '(("zathura" "zathura %o")))
+    (TeX-source-correlate-start-server t)
+    (TeX-PDF-mode t)
+    (LaTeX-electric-left-right-brace t)
+    :mode ("\\.tex\\'" . latex-mode)
+    :commands (latex-mode LaTeX-mode plain-tex-mode)
+    :hook
+    (LaTeX-mode . LaTeX-math-mode)
+    (LaTeX-mode . display-line-numbers-mode)
+    (TeX-mode . display-line-numbers-mode)
+    (LaTeX-mode . latex-electric-env-pair-mode)
+    :config
+    (add-hook 'TeX-after-compilation-finished-functions #'TeX-revert-document-buffer))
+  (use-package tex-mode
+    :bind
+    (:map latex-mode-map
+          ("C-M-f" . latex-forward-sexp)
+          ("C-M-b" . latex-backward-sexp)))
+  (use-package cdlatex
+    :bind
+    (:map cdlatex-mode-map
+          ("(" . nil)
+          ("[" . nil)
+          ("{" . nil))
+    :hook
+    (LaTeX-mode . turn-on-cdlatex)
+    (org-mode . turn-on-org-cdlatex))
+
+  (use-package latex-extra
+    ;; https://github.com/Malabarba/latex-extra lists keybinds
+    :custom
+    (latex/override-preview-map nil)
+    :hook
+    (LaTeX-mode . latex-extra-mode))
+  (use-package lsp-tex
+    :straight nil
+    :after (tex lsp-mode)
+    ;; :commands (lsp-latex-build lsp-late-forward-search)
+    :config
+    (add-to-list 'lsp-enabled-clients 'texlab)
+    :hook
+    ((latex-mode tex-mode LaTeX-mode) . lsp-deferred ))
+  (use-package magic-latex-buffer
+    :disabled t
+    :hook
+    (LaTeX-mode . magic-latex-buffer))
+  (use-package reftex
+    ;; :after tex-site
+    :custom
+    (reftex-cite-prompt-optional-args t)
+    (reftex-plug-into-auctex t)
+    :preface
+    (defun reftex () nil)
+    :hook
+    (LaTeX-mode . turn-on-reftex))
+  (use-package ivy-bibtex
+    :after reftex)
+#+end_src
+*** Org
+#+begin_src emacs-lisp :tangle yes
+  (use-package org
+    ;; :straight (org :type git :host "git.sv.gnu.org" :repo "emacs/org-mode")
+    :custom
+    (org-startup-indented t)
+    (org-startup-with-inline-images t)
+    (org-enforce-todo-checkbox-dependencies t)
+    :mode ("\\.org\\'" . org-mode))
+  (use-package org-superstar
+    :hook
+    (org-mode . org-superstar-mode))
+  (use-package toc-org
+    :commands (toc-org toc-org-mode))
+  (use-package org-starter)
+  (use-package org-starter-swiper)
+
+  (use-package org-ql)
+  (use-package ivy-omni-org
+    :custom
+    (ivy-omni-org-file-sources '(org-starter-known-files)))
+#+end_src
+**** Agenda
+#+begin_src emacs-lisp :tangle yes
+  (use-package org-agenda
+    :straight nil
+    :bind ("C-c a"  . org-agenda))
+  (use-package org-habit
+    :straight nil)
+  (use-package org-alert)
+#+end_src
+**** Roam
+#+begin_src emacs-lisp :tangle yes
+  (use-package org-roam)
+  (use-package org-roam-ui)
+  (use-package org-roam-timestamps)
+#+end_src
+**** Babel
+#+begin_src emacs-lisp :tangle yes
+
+#+end_src
+*** Markdown
+#+begin_src emacs-lisp :tangle yes
+  (use-package markdown-mode
+    :straight nil
+    :mode ("\\.md\\'" . markdown-mode)
+    :hook (markdown-mode . display-line-numbers-mode))
+#+end_src
+*** notebooks
+**** JuPyTer
+#+begin_src emacs-lisp :tangle yes
+  (use-package ein
+    :if (executable-find "jupyter")
+    :bind
+    (:map ein:ipdb-mode-map
+     ("C-c e" . ein:worksheet-execute-cell)
+     ("C-c C-e" . ein:worksheet-execute-all-cells))
+    :custom-face
+    (ein:basecell-input-area-face ((t (:extend t :background "#303640"))))
+    :defer t
+    :custom
+    (ein:worksheet-enable-undo t))
+#+end_src
+* system
+** services
+#+begin_src emacs-lisp :tangle yes
+  (use-package bluetooth
+    :commands (bluetooth-list-devices))
+#+end_src
+** desktop
+notifications
+#+begin_src emacs-lisp :tangle yes
+(use-package alert)
+#+end_src
+*** sound
+Pipewire supersedes PulseAudio and ALSA, but is nevertheless configured with PulseAudio tools.
+#+begin_src emacs-lisp
+
+#+end_src
+*** paste
+#+begin_src emacs-lisp :tangle yes
+
+#+end_src
+*** keyboard
+#+begin_src emacs-lisp :tangle yes
+  (use-package kbd-mode
+    :straight (kbd-mode :type git :host github :repo "kmonad/kbd-mode" )
+    :mode ("\\.kbd\\'" . kbd-mode))
+#+end_src
+*** display
+river is a tiling Wayland compositor (analogous to bspwm)
+#+begin_src shell :tangle ../../.local/bin/run-river :shebang "#!/bin/bash"
+  export MOZ_ENABLE_WAYLAND=1
+  export XDG_SESSION_TYPE=wayland
+  export XDG_CURRENT_DESKTOP=river
+  exec dbus-run-session river -log-level debug >"/tmp/river-$(date +%F-%R).log" 2>&1
+#+end_src
+** shell
+#+begin_src emacs-lisp :tangle yes
+
+  ;; https://www.emacswiki.org/emacs/ExecPath
+  (setq-default shell-file-name "/bin/bash" )
+  (defun nt/set-exec-path-from-shell-PATH ()
+    "Set up Emacs' `exec-path' and PATH environment variable to match
+                     that used by the user's shell.
+
+                     This is particularly useful under Mac OS X and macOS, where GUI
+                     apps are not started from a shell."
+    (interactive)
+    (let ((path-from-shell (replace-regexp-in-string
+                            "[ \t\n]*$" "" (shell-command-to-string
+                                            "$SHELL --login -c 'echo $PATH'"
+                                            ))))
+      (setenv "PATH" path-from-shell)
+      (setq exec-path (split-string path-from-shell path-separator))))
+
+  ;;(nt/set-exec-path-from-shell-PATH)
+
+  (use-package envrc
+    :defer 7
+    :preface
+    (defun nt/envrc-write (&optional path)
+      (interactive "GEdit .envrc  at: ")
+      (let* ((path (expand-file-name (or path default-directory)))
+             (default-directory path))
+        (find-file ".envrc")))
+    (defun nt/envrc-allow-on-exit ()
+      (interactive)
+      (when (eq major-mode 'envrc-file-mode)
+        (save-buffer)
+        (envrc-allow)
+        (kill-buffer)))
+    :bind
+    (:map envrc-mode-map ("C-c e" . envrc-command-map))
+    (:map envrc-command-map ("w" . nt/envrc-write))
+    (:map envrc-file-mode-map ("C-c C-c" . nt/envrc-allow-on-exit))
+    :config
+    (envrc-global-mode 1))
+
+  (use-package load-env-vars
+    :commands (load-env-vars))
+#+end_src
+true terminal inside Emacs
+#+begin_src emacs-lisp :tangle yes
+  (use-package vterm
+    :custom
+    (vterm-shell "/usr/bin/bash")
+    (vterm-timer-delay 0.01)
+    (vterm-max-scrollback 100000)
+    :preface
+    (defun nt/vterm-pop-up ()
+      (interactive)
+      (if (eq major-mode 'vterm-mode)
+          (switch-to-buffer nil)
+        (call-interactively 'vterm)))
+    (defun nt/vterm-send-region (start end )
+      "Evaluate text from START to END in associated vterm session."
+      (interactive "r")
+      (let ((proc (if (eq major-mode 'sh-mode)
+                      (concat "*vterm-" (buffer-name) "*")
+                    "*vterm*")))
+        (unless (get-buffer proc)
+          (vterm proc))
+        (process-send-region  proc start end)
+        (with-current-buffer proc
+          (vterm-send-return))))
+    (defun nt/send-region-to-shell (beg end)
+      (interactive "r")
+      (process-send-region "*shell*" beg end))
+    :bind
+    ("C-c t" . nt/vterm-pop-up)
+    (:map vterm-mode-map
+          ([return] . vterm-send-return)
+          ("C-c C-c" . vterm-send-C-c)
+          ("C-y" . vterm-yank))
+    :config
+    (define-advice counsel-yank-pop (:around (fun &rest args))
+      (if (equal major-mode 'vterm-mode)
+          (let ((counsel-yank-pop-action-fun (symbol-function
+                                              'counsel-yank-pop-action))
+                (last-command-yank-p (eq last-command 'yank)))
+            (cl-letf (((symbol-function 'counsel-yank-pop-action)
+                       (lambda (s)
+                         (let ((inhibit-read-only t)
+                               (last-command (if (memq last-command
+                                                       '(counsel-yank-pop
+                                                         ivy-previous-line
+                                                         ivy-next-line))
+                                                 'yank
+                                               last-command))
+                               (yank-undo-function (when last-command-yank-p
+                                                     (lambda (_start _end)
+                                                       (vterm-undo)))))
+                           (cl-letf (((symbol-function 'insert-for-yank)
+                                      'vterm-insert))
+                             (funcall counsel-yank-pop-action-fun s))))))
+              (apply fun args)))
+        (apply fun args))))
+  (use-package vterm-toggle
+    :disabled t
+    :custom
+    (vterm-toggle-fullscreen-p nil)
+    (vterm-toggle-scope 'project)
+    :hook
+    (vterm-mode . nt/no-line-numbers)
+    :commands
+    (vterm-toggle vterm toggle-cd vterm-send-return)
+    :bind
+                                          ;("C-c t" . vterm-toggle)
+                                          ;(:map prog-mode-map ("C-c t" . vterm-toggle-cd))
+    (:map vterm-mode-map ([return] . vterm-send-return)))
+  (use-package multi-vterm
+    :after vterm
+    :commands (multi-vterm multi-vterm-projectile multi-vterm-toggle))
+#+end_src
+Remote access; no directory tracking yet
+#+begin_src emacs-lisp :tangle yes
+  (defun nt/read-host-urls ()
+    "Read ~/.ssh/config and return list of valid ssh user-address pairs."
+    (when (file-exists-p "~/.ssh/config")
+      (with-temp-buffer
+        (insert-file-contents "~/.ssh/config")
+        (let ((addrs nil)
+              (hosts nil)
+              (forward-string (lambda ()
+                                "Move to end of whitespace and back to last character, then
+  return point."
+                                (forward-whitespace 1)
+                                (backward-char)
+                                (point))))
+
+          ;; list-ify IP addresses sequentially
+          (while (not (eq (point) (point-max)))
+            (when (looking-at "Hostname")
+              (forward-whitespace 1)
+              (push (buffer-substring-no-properties (point)
+                                                    (funcall forward-string))
+                    addrs))
+            (forward-line))
+          (setq addrs (reverse addrs))
+
+          ;; back to top; sequentially prepend usernames to addresses
+          (goto-char (point-min))
+          (while (not (eq (point) (point-max)))
+            (when (looking-at "^User")
+              (push (concat (buffer-substring-no-properties (forward-whitespace 1)
+                                                            (funcall forward-string))
+                            "@"
+                            (pop addrs))
+                    hosts))
+            (forward-line))
+          hosts))))
+
+  (defun nt/read-hosts ()
+    "Read ~/.ssh/config and return list of valid ssh hosts."
+    (when (file-exists-p "~/.ssh/config")
+      (with-temp-buffer
+        (insert-file-contents "~/.ssh/config")
+        (let ((hosts nil)
+              (forward-string (lambda ()
+                                "Move to end of whitespace and back to last character, then
+  return point."
+                                (forward-whitespace 1)
+                                (backward-char)
+                                (point))))
+
+          ;; list-ify host IDs sequentially
+          (while (not (eq (point) (point-max)))
+            (when (looking-at "[Hh]ost[^Nn]")
+              (push (buffer-substring-no-properties (forward-whitespace 1)
+                                                    (funcall forward-string))
+                    hosts))
+            (forward-line))
+          hosts))))
+
+  (defun nt/ssh-vterm (host)
+    "Open ssh connection to HOST (user@host or from ~/.ssh/config)
+  inside a new vterm instance."
+    (interactive (list (completing-read "[user]@host: " (nt/read-hosts))))
+    (require 'vterm nil 'noerror)
+    (if (fboundp 'vterm-other-window)
+        (let ((name (concat "*vterm ssh " host "*")))
+          (vterm-other-window name)
+          (with-current-buffer name
+            (vterm-send-string (concat "ssh " host))
+            (vterm-send-return)))
+      (error "The vterm package is not installed")))
+#+end_src
+Utility script for when ssh'ing to previously unknown host. (presumes key auth with ~ssh -i ...~ was used)
+#+begin_src shell :tangle ../../.local/bin/ssh-record-host :shebang "#!/bin/sh"
+  # Record host alias and descriptive comment.
+  if [ $# -eq 0 ]; then {
+      printf "host: "
+      read -r host
+      printf "description: "
+      read -r desc
+  } else {
+      host="$1"
+      desc="$2"
+  }; fi
+
+  # Parse most recent "ssh -i..." command.
+  cmd="$(fd -H1d1 -t f sh_history$ "${HOME}" | xargs rg "^ssh -i+" | tail -n1 | cut -d':' -f2-)"
+
+  idfile=$(echo "$cmd" | cut -d' ' -f3)
+  user=$(echo "$cmd" | cut -d' ' -f4 | cut -d'@' -f1)
+  hostname=$(echo "$cmd" | cut -d' ' -f4 | cut -d'@' -f2)
+
+  # Append to ~/.ssh/config
+  printf "\n# %s\nHost %s\nHostname %s\nUser %s\nIdentityfile %s\n" \
+         "$desc" "$host" "$hostname" "$user" "$idfile" \
+  >> "${HOME}/.ssh/config"
+#+end_src
+*** security & access
+#+begin_src emacs-lisp :tangle yes
+  (use-package sudo-edit
+    :commands (sudo-edit))
+  (use-package ivy-pass
+    :commands
+    (ivy-pass))
+  (use-package pinentry
+    :custom
+    (password-cache-expiry (* 60 15))
+    (epg-pinentry-mode 'loopback)
+    (pinentry-popup-prompt-window nil)
+    :config
+    (pinentry-start))
+#+end_src
+Password management
+#+begin_src emacs-lisp :tangle yes
+  (use-package password-store
+    :custom
+    (password-store-password-length 25))
+  (use-package auth-source-pass
+    :hook
+    (after-init . auth-source-pass-enable))
+#+end_src
+Keychain
+#+begin_src emacs-lisp :tangle yes
+  (use-package keychain-environment
+    :hook
+    (after-init . keychain-refresh-environment))
+#+end_src
+** containers
+#+begin_src emacs-lisp :tangle yes
+    (use-package docker
+      :commands docker)
+    (use-package dockerfile-mode
+      :mode
+      ("Dockerfile\\'" . dockerfile-mode)
+      :config
+      (put 'dockerfile-image-name 'safe-local-variable #'stringp))
+    (use-package lxd-tramp)
+    (use-package counsel-tramp)
+#+end_src
+** source control & projects
+git
+#+begin_src emacs-lisp :tangle yes
+  (use-package vc
+    :defer t
+    :custom
+    (vc-follow-symlinks t)
+    :preface
+    (defun vc () nil)
+    :hook
+    (find-file . vc-refresh-state))
+
+  (use-package smerge-mode
+    :custom
+    (smerge-command-prefix (kbd "C-c v"))
+    :config
+    ;; https://emacs.stackexchange.com/a/33561/37695
+    (defhydra nt-smerge (:color red :hint nil)
+      "
+  Navigate       Keep               other
+  ----------------------------------------
+  _p_: previous  _c_: current       _e_: ediff
+  _n_: next      _m_: mine  <<      _u_: undo
+  _j_: up        _o_: other >>      _r_: refine
+  _k_: down      _a_: combine       _q_: quit
+                 _b_: base
+  "
+      ("n" smerge-next)
+      ("p" smerge-prev)
+      ("c" smerge-keep-current)
+      ("m" smerge-keep-mine)
+      ("o" smerge-keep-other)
+      ("b" smerge-keep-base)
+      ("a" smerge-keep-all)
+      ("e" smerge-ediff)
+      ("j" previous-line)
+      ("k" forward-line)
+      ("r" smerge-refine)
+      ("u" undo)
+      ("q" nil :exit t))
+
+    (defun enable-smerge-maybe ()
+      (when (and buffer-file-name (vc-backend buffer-file-name))
+        (save-excursion
+          (goto-char (point-min))
+          (when (re-search-forward "^<<<<<<< " nil t)
+            (smerge-mode +1)
+            (nt-smerge/body))))))
+
+  (use-package magit
+    :custom
+    (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1)
+    (magit-commit-show-diff t)
+    (auto-revert-buffer-list-filter #'magit-auto-revert-repository-buffer-p)
+    :bind (("C-x g" . magit-status))
+    :config
+    (load-library "project")
+    (add-to-list 'magit-no-confirm 'stage-all-changes))
+
+  (use-package magit-todos
+    :hook
+    (magit-mode . magit-todos-mode))
+
+  (use-package git-gutter
+    :custom
+    (git-gutter:ask-p nil)
+    (git-gutter:verbosity 1)
+    :bind
+    ("C-x v =" . git-gutter:pop-hunk)
+    ("C-x p" . git-gutter:previous-hunk)
+    ("C-x n" . git-gutter:next-hunk)
+    ("C-x v s" . git-gutter:stage-hunk)
+    ("C-x v r" . git-gutter:revert-hunk)
+    ("C-x v SPC" . git-gutter:mark-hunk)
+    :hook
+    (after-init . global-git-gutter-mode))
+
+  (use-package browse-at-remote
+    :bind ("C-c g g" . browse-at-remote))
+  (use-package git-timemachine)
+
+  (use-package git-messenger
+    :custom
+    (git-messenger:show-detail t)
+    :commands git-messenger:popup-message
+    :bind (("C-c M" . git-messenger:popup-message)))
+
+  (use-package git-link
+    :bind ("C-c g l" . git-link))
+
+  (use-package what-the-commit            ; Insert random commit messages
+    :commands (what-the-commit-insert what-the-commit))
+
+  (use-package libgit
+    :commands (libgit-load))
+  (use-package magit-libgit
+    :after (magit libgit))
+
+  (use-package git-annex
+    :after dired)
+  (use-package magit-annex
+    :after magit)
+
+  (use-package forge
+    :after magit)
+  (use-package github-review
+    :commands (github-review-start github-review-forge-pr-at-point))
+
+  (use-package git-walktree
+    :commands (git-walktree))
+
+  (use-package gitignore-templates
+    :commands
+    (gitignore-templates-insert gitignore-templates-new-file))
+
+  (use-package git-modes
+    :mode
+    (("config$" . gitconfig-mode)
+     (("/.dockerignore\\'") . gitignore-mode)))
+#+end_src
+projects
+#+begin_src emacs-lisp :tangle yes
+  (use-package projectile
+    :bind
+    ("C-c k" . 'projectile-kill-buffers)
+    ("C-c M" . 'projectile-compile-project)
+    :bind-keymap
+    ("C-c p" . projectile-command-map)
+    :custom
+    (projectile-completion-system 'ivy)
+    (projectile-switch-project-action 'projectile-dired)
+    :config
+    (projectile-mode 1))
+  (use-package counsel-projectile
+    :custom
+    (counsel-projectile-mode 1)
+    :bind
+    ("C-c M-p" . counsel-projectile))
+  (use-package projectile-git-autofetch
+    :disabled t
+    :after projectile
+    :config
+    (projectile-git-autofetch-mode 1))
+  (use-package project
+    :straight nil
+    :defines project-switch-commands)
+#+end_src
+GNU Stow
+#+begin_src shell :tangle ../../.local/bin/stow-maybe :shebang "#!/bin/sh"
+  start="${PWD}"
+
+  while [ "${PWD}" != "${HOME}" ] && [ "${PWD}" != / ] ; do {
+      cd .. || exit
+      [ "$(fd -H1d1 -t f stowrc .)" ] && stow . && break
+  }; done
+
+  cd "${start}" || exit
+#+end_src
+#+begin_src shell :tangle ../../.local/bin/stow-mv :shebang "#!/bin/sh"
+  start="${PWD}"
+
+  # if target file ${1} isn't in $HOME or $DOTDIR is empty, quit
+  if grep -q "${HOME}" <<EOF
+   "$(dirname "${1}")"
+  EOF
+  then [ -z "${DOTDIR}" ] && exit
+  fi
+
+  # extract path substring after $HOME and replicate in $DOTDIR
+  newpath=$(dirname "$(realpath "${1}")" | sed "s|${HOME}/||" -)
+  mkdir -p "${DOTDIR}/${newpath}"
+  mv "${1}" "${DOTDIR}/${newpath}"
+
+  cd "${DOTDIR}" && stow .
+  cd "${start}" || exit
+#+end_src
+#+begin_src emacs-lisp :tangle yes
+  (defun nt/stow-maybe ()
+    "Call the stow-maybe script from the current buffer's directory."
+    (interactive)
+    (let ((start-dir default-directory))
+      (cd (file-name-directory buffer-file-name))
+      (shell-command "stow-maybe")
+      (cd start-dir)))
+#+end_src
+** docs
+*** Info
+#+begin_src emacs-lisp :tangle yes
+  (use-package info-rename-buffer
+    :after info
+    :config
+    (info-rename-buffer-mode 1))
+  (use-package info-colors
+    :hook
+    (Info-selection-hook . info-colors-fontify-node))
+#+end_src
+** media
+It's non-text files which trigger unnecessary warnings
+#+begin_src emacs-lisp :tangle yes
+  (setq large-file-warning-threshold nil)
+#+end_src
+*** PDF
+viewing
+#+begin_src emacs-lisp :tangle yes
+
+#+end_src
+adding & editing Table of Contents
+#+begin_src emacs-lisp :tangle yes
+  (use-package toc-mode)
+#+end_src
+searching with a faster, external program (so Emacs won't hang)
+#+begin_src emacs-lisp :tangle yes
+  (use-package pdfgrep
+    :commands (pdfgrep pdfgrep-mode)
+    :config
+    (pdfgrep-mode))
+#+end_src
+Annotating externally with Org
+#+begin_src emacs-lisp :tangle yes
+  (use-package org-noter
+    :commands (org-noter org-noter-create-skeleton)
+    :custom
+    (org-noter-default-notes-file-names '("notes.org"))
+    (org-noter-notes-search-path '("~/.local/org"))
+    (org-noter-separate-notes-from-heading t)
+    (org-noter-notes-window-location 2)
+    :hook
+    (org-mode . (lambda ()  (setq-local fill-column 96))))
+#+end_src
+*** ePub
+#+begin_src emacs-lisp :tangle yes
+  (use-package nov
+    :commands (nov-mode)
+    :mode ("\\.epub\\'" . nov-mode)
+    :custom
+    (nov-text-width 80)
+    :preface
+    (defun nt/nov-fontify ()
+      (face-remap-add-relative 'variable-pitch :family "PT Serif"
+                               :weight 'light
+                               :height 1.0))
+    :hook
+    (nov-mode . nt/no-line-numbers))
+#+end_src
+*** video
+#+begin_src emacs-lisp :tangle yes
+  (use-package mpv
+    :commands mpv-play
+    :preface
+    (defun nt/mpv-play-url (url)
+      (interactive "sURL: ")
+      (mpv-start url))
+    (defun nt/mpv-audio-only (path)
+      (interactive "fFile: ")
+      (let ((mpv-default-options '("--no-video")))
+       (mpv-play (expand-file-name path)))))
+#+end_src
+*** image
+#+begin_src emacs-lisp :tangle yes
+  (setq save-interprogram-paste-before-kill t)
+  (defun nt/screenshot-select-0x0 ()
+    "Drag selection, screenshot it, upload to 0x0.st, kill URL."
+    (interactive)
+    (require '0x0 nil 'noerror)
+    (let* ((time (format-time-string "%b_%d_%H-%M-%S"))
+           (filename (concat "/tmp/" time ".png")))
+      (shell-command (concat "grim -g $(slurp) " filename))
+      (0x0-upload-file (cdr (assq'0x0 0x0-servers)) filename)))
+  (defun nt/monitorshot (&optional upload)
+    "Screenshot active monitor and save to ~Pictures/screenshots or \\
+  UPLOAD to 0x0.st."
+    (interactive)
+    (require '0x0 nil 'noerror)
+    (let* ((time (format-time-string "%b_%d_%H-%M-%S"))
+           (dir (if upload
+                    "/tmp/"
+                  "~/Pictures/screenshots/"))
+           (filename (concat dir time ".png")))
+      (shell-command (concat "grim -o eDP-1 " filename))
+      (when upload
+        (0x0-upload-file (cdr (assq'0x0 0x0-servers)) filename))))
+  (defun nt/monitorshot-0x0 ()
+    "Upload screenshot of current display to 0x0.st."
+    (interactive)
+    (nt/monitorshot t))
+#+end_src
+*** chat
+**** IRC
+#+begin_src emacs-lisp :tangle yes
+  (use-package circe
+    :commands (circe)
+    :custom
+    (circe-reduce-lurker-spam t)
+    (circe-network-options
+     `(
+       ("Libera"
+        :host "irc.libera.chat"
+        :port 6697
+        :tls t
+        :nick "talismanick"
+        :sasl-username "talismanick"
+        :sasl-password (lambda (server) (password-store-get "irc/libera.chat/talismanick"))
+        :channels ("#emacs" "#river" "#emacs-circe" "#voidlinux" "#xbps"))
+       ("OFTC"
+        :host "irc.oftc.net"
+        :port 6697
+        :tls t
+        :nick "talismanick"
+        :nickserv-password (lambda (server) (password-store-get "irc/oftc.net/talismanick"))
+        :channels ("#pipewire" "#voidlinux-ppc" "#alpine-linux")))))
+  (use-package circe-notifications
+    :custom
+    (circe-notifications-watch-strings `(,user-login-name))
+    :hook
+    (circe-server-connected . enable-circe-notifications))
+#+end_src
+*** email
+#+begin_src emacs-lisp :tangle yes
+
+#+end_src
+** Internet
+pastebin
+#+begin_src emacs-lisp :tangle yes
+  (use-package 0x0
+    :commands (0x0-upload-file 0x0-upload-string))
+#+end_src
+Watch videos
+#+begin_src  emacs-lisp :tangle yes
+  (use-package ytdious
+    :custom (ytdious-invidious-api-url "https://invidious.flokinet.to")
+    :commands (ytdious ytdious-search)
+    :preface
+    (defun nt/ytdious-kill-url ()
+      "Copy url of video at point to kill ring."
+      (interactive)
+      (let ((video (ytdious-get-current-video)))
+        (kill-new (concat ytdious-invidious-api-url "/watch?v=" (ytdious-video-id-fun video)))
+        (message "Yanked '%s' link into kill ring" (assoc-default 'title video))))
+    :bind
+    (:map ytdious-mode-map (("u" . #'nt/ytdious-kill-url))))
+#+end_src
+
+#+begin_src emacs-lisp :tangle yes
+  (use-package google-this
+    :commands (google-this-word
+               google-this-region
+               google-this-symbol
+               google-this-clean-error-string
+               google-this-line
+               google-this-search
+               google-this-cpp-reference))
+#+end_src
+This package is poorly behaved and tries to ~pip3 install~ in ~${HOME}~.
+#+begin_src emacs-lisp :tangle yes
+  (use-package leetcode
+    :commands (leetcode)
+    :custom
+    (leetcode-save-solutions t)
+    (leetcode-directory "~/misc-prog/leetcode"))
+#+end_src
+** performance
+Async tangling doesn't play nicely with other async processes which don't respect its let-bound
+locking.
+#+begin_src emacs-lisp :tangle yes
+  (use-package esup
+    :commands esup)
+  (use-package async
+    :preface
+    (defvar nt/tangling nil
+      "Whether Emacs is busy tangling a file or not")
+    (defun nt/tangle-async-safe (&optional file)
+      "Tangle FILE asynchronously, but only if all other tangling jobs
+  are done."
+      (interactive "fFile: ")
+      (require 'org-ql nil 'noerror)
+      (when (and (not nt/tangling)
+                 (s-match "init.org$" (or file
+                                          (buffer-file-name))))
+        (let ((target (or file
+                          (file-truename (buffer-file-name))))
+              (nt/tangling t))
+          (message "tangling %s"target)
+          (async-start
+           `(lambda ()
+              (require 'org nil 'noerror)
+              (org-babel-tangle-file ,target))
+           `(lambda (result)
+              (shell-command "[ -x $(command -v stow-maybe) ] && stow-maybe")
+              (message "%s tangled" ,target))))))
+    :hook
+    (after-save . nt/tangle-async-safe))
+#+end_src
