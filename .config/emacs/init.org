@@ -90,19 +90,23 @@ Always use frames; let the window manager handle layout.
   (push '(undecorated . t) default-frame-alist)
   (use-package doom-themes
     :demand t
+    :preface
+    (defun nt/read-theme ()
+      "Read and set theme from ~/.local/run/etheme.el."
+      (load-theme
+       (if (file-exists-p "~/.local/run/etheme.el")
+           (let ((theme (with-temp-buffer
+                          (insert-file-contents "~/.local/run/etheme.el")
+                          (emacs-lisp-mode)
+                          (goto-char (point-max))
+                          (backward-sexp)
+                          (eval (sexp-at-point)))))
+             (require (car theme) nil 'noerror)
+             (cdr theme))
+         'doom-plain-dark)
+       t))
     :config
-    (load-theme
-     (if (file-exists-p "~/.local/run/etheme.el")
-         (let ((theme (with-temp-buffer
-                        (insert-file-contents "~/.local/run/etheme.el")
-                        (emacs-lisp-mode)
-                        (goto-char (point-max))
-                        (backward-sexp)
-                        (eval (sexp-at-point)))))
-           (require (car theme) nil 'noerror)
-           (cdr theme))
-       'doom-plain-dark)
-     t)
+    (nt/read-theme)
     :custom
     (frame-inhibit-implied-resize t)
     :hook
@@ -215,10 +219,10 @@ Always use frames; let the window manager handle layout.
       riverctl border-color-unfocused "${6}"
 
       # let emacs load the theme package and theme name from a file on startup
-      printf "(setq ch-pkg '%s)\n(setq ch-theme '%s)" "${7}" "${8}" \
+      printf "'(%s . %s)" "${7}" "${8}" \
              > "${HOME}/.local/run/etheme.el"
       # actively try loading theme for 10 seconds
-      timeout 10 emacsclient -e "(require '${7} nil 'noerror)(load-theme '${8} t)" &
+      timeout 10 emacsclient -e "(nt/read-theme)" &
 
       # TODO: switch yambar config on $9 and fnott on $10
   }
@@ -226,7 +230,7 @@ Always use frames; let the window manager handle layout.
   case "$1" in
       "sakura" )
           chtheme vimix-dark-laptop Vimix-dark 'Cantarell 11' \
-                  void-mountain.jpg 0xc9e9e9e 0x7d7d7d \
+                  void-mountain.jpg 0x9e9e9e 0x7d7d7d \
                   doom-themes doom-sakura
           ;;
       "gondola" )
