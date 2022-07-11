@@ -467,7 +467,7 @@ Grep from Emacs rather than command line.
     :custom
     (oex-assoc '((("zathura" "--fork") "pdf" "eps" "ps" "djvu")
                  (("mpv") "mp4" "mpeg" "mkv" "webm" "avi" "flv" "wmv" "opus")
-                 (("imv") "png" "jpg" "jpeg" "webp")))
+                 (("imv") "png" "jpg" "jpeg" "webp" "gif")))
     :hook
     (after-init . oex-mode))
 #+end_src
