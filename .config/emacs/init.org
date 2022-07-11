@@ -1698,6 +1698,7 @@ git
     :commands (what-the-commit-insert what-the-commit))
 
   (use-package libgit
+    :after vc
     :commands (libgit-load))
   (use-package magit-libgit
     :after (magit libgit))
