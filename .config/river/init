@@ -166,6 +166,7 @@ riverctl csd-filter-add app-id "gedit"
 
 # Set theme
 chtheme sakura
+riverctl border-width 1
 
 # Start user services
 [ -d "${HOME}/.local/service/" ] && riverctl spawn "runsvdir -P ${HOME}/.local/service/"
