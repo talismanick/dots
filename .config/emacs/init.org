@@ -1890,14 +1890,15 @@ Annotating externally with Org
         :nick "talismanick"
         :sasl-username "talismanick"
         :sasl-password (lambda (server) (password-store-get "irc/libera.chat/talismanick"))
-        :channels ("#emacs" "#river" "#emacs-circe" "#voidlinux" "#xbps"))
+        :channels ("#emacs" "#river" "#emacs-circe" "#voidlinux" "#xbps" "#emersion" "#yambar"
+                   "#foot" "#ffmpeg" "#fnott"))
        ("OFTC"
         :host "irc.oftc.net"
         :port 6697
         :tls t
         :nick "talismanick"
         :nickserv-password (lambda (server) (password-store-get "irc/oftc.net/talismanick"))
-        :channels ("#pipewire" "#voidlinux-ppc" "#alpine-linux")))))
+        :channels ("#pipewire" "#voidlinux-ppc" "#alpine-linux" "#pwmt")))))
   (use-package circe-notifications
     :custom
     (circe-notifications-watch-strings `(,user-login-name))
