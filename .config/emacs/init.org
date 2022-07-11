@@ -539,8 +539,14 @@ Bind keymaps to shorten repetitive sequences.
     (prescient-filter-method  '(literal regexp initialism)))
 
   (use-package multiple-cursors
-    :bind (("C-c m m" . #'mc/edit-lines )
-           ("C-c m d" . #'mc/mark-all-dwim )))
+    :after ivy
+    :bind (("C-c m m" . mc/edit-lines )
+           ("C-c m d" . mc/mark-all-dwim )
+           ("C->" . mc/mark-next-like-this)
+           ("C-<" . mc/mark-previous-like-this)
+           ("C-c C-<" . mc/mark-all-like-this))
+    :config
+    (push 'swiper-mc mc/cmds-to-run-once))
 
   (defun nt/kill-region-or-backward-word ()
     "If the region is active and non-empty, call `kill-region'.
@@ -604,26 +610,22 @@ autocomplete
     (defun nt/toggle-company-ispell ()
       "Toggle company-ispell."
       (interactive)
-      (cond
-       ((memq 'company-ispell company-backends)
-        (setq company-backends (delete 'company-ispell company-backends))
-        (message "company-ispell disabled"))
-       (t
-        (add-to-list  'company-backends 'company-ispell)
-        (message "company-ispell enabled"))))
-
+      (message
+       (if ((memq 'company-ispell company-backends)
+            (progn (delete 'company-ispell company-backends)
+                   "company-ispell disabled"))
+           (progn (push 'company-ispell company-backends)
+                  "company-ispell enabled"))))
     (defun nt/company-ispell-setup ()
       ;; @see https://github.com/company-mode/company-mode/issues/50
       (when (boundp 'company-backends)
         (make-local-variable 'company-backends)
         (push 'company-ispell company-backends)
         ;; @see https://github.com/redguardtoo/emacs.d/issues/473
-        (cond
-         ((and (boundp 'ispell-alternate-dictionary)
-               ispell-alternate-dictionary)
-          (setq company-ispell-dictionary ispell-alternate-dictionary))
-         (t
-          (setq company-ispell-dictionary "/usr/share/dict/words")))))
+        (setq company-ispell-dictionary
+              (if (and (boundp 'ispell-alternate-dictionary) ispell-alternate-dictionary)
+                  ispell-alternate-dictionary
+                "/usr/share/dict/words"))))
     :hook
     (org-mode . nt/company-ispell-setup))
   (use-package company-dict
