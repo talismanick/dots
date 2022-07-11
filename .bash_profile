@@ -29,6 +29,7 @@ export XKB_DEFAULT_OPTIONS=ctrl:nocaps
 
 # Fonts, locales, etc
 #export LC_ALL="C"
+export LANG="en_US.UTF-8"
 
 # mail
 export NOTMUCH_CONFIG="${XDG_CONFIG_HOME}/notmuch/notmuch.conf"
@@ -47,6 +48,4 @@ export PATH="$PATH:${HOME}/.cabal/bin/:${HOME}/.ghcup/bin"
 export GHCUP_USE_XDG_DIRS="true"
 
 # Rust
-#export PATH="$PATH:${HOME}/.cargo/bin"
-
-. "$HOME/.cargo/env"
+export PATH="$PATH:${HOME}/.cargo/bin"
