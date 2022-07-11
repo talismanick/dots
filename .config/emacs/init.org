@@ -462,32 +462,14 @@ Grep from Emacs rather than command line.
     :commands (ivy-explorer ivy-explorer-mode)
     :hook
     (after-init . ivy-explorer-mode))
-  (use-package dired-x
-    :straight nil
+  (use-package oex
+    :straight (oex :type git :host github :repo "talismanick/oex-el")
     :custom
-    (dired-guess-shell-alist-user
-     '(("\\.e?ps$" "zathura") ;;  "lpr"
-       ;; ("\\.chm$" "xchm")
-       ("\\.rar$" "unar")
-       ("\\.e?ps\\.g?z$" "gunzip -qc * | zathura -")
-       ("\\.pdf$" "zathura")
-       ("\\.flv$" "mpv")
-       ("\\.mov$" "mpv")
-       ("\\.3gp$" "mpv")
-       ("\\.avi$" "mpv")
-       ("\\.webm$" "mpv"))))
-  ;; (use-package runner)
-  (use-package unify-opening
-    :config
-    (with-eval-after-load "mm-decode"
-      (unify-opening-setup-for-mm-decode))
-    (with-eval-after-load "org"
-      (unify-opening-setup-for-org))
-    (with-eval-after-load "dired-x"
-      (unify-opening-setup-for-dired-x))
-    (with-eval-after-load "counsel"
-      (unify-opening-setup-for-counsel)))
-
+    (oex-assoc '((("zathura" "--fork") "pdf" "eps" "ps" "djvu")
+                 (("mpv") "mp4" "mpeg" "mkv" "webm" "avi" "flv" "wmv" "opus")
+                 (("imv") "png" "jpg" "jpeg" "webp")))
+    :hook
+    (after-init . oex-mode))
 #+end_src
 ** help
 see which keys are which in real time
@@ -520,6 +502,11 @@ Bind keymaps to shorten repetitive sequences.
 
   (setq make-backup-files nil)
   (setq require-final-newline t)
+
+  (use-package so-long
+    :straight nil
+    :hook
+    (after-init . global-so-long-mode))
 
   (setq-default indent-tabs-mode nil)
   (electric-pair-mode 1)
@@ -924,8 +911,9 @@ J
 #+begin_src emacs-lisp :tangle yes
   (use-package sh-script
     :mode
-    ("template$"   . sh-mode)
-    ("PKGBUILD$" . sh-mode)
+    ("/conf\\'" . sh-mode)
+    ("/template\\'"   . sh-mode)
+    ("/PKGBUILD\\'" . sh-mode)
     ("\\.sh\\'" . sh-mode))
   (use-package modern-sh
     :disabled
@@ -1366,7 +1354,8 @@ river is a tiling Wayland compositor (analogous to bspwm)
       (setq exec-path (split-string path-from-shell path-separator))))
 
   ;;(nt/set-exec-path-from-shell-PATH)
-
+  (setq async-shell-command-buffer 'rename-buffer
+        async-shell-command-display-buffer nil)
   (use-package envrc
     :defer 7
     :preface
@@ -1865,22 +1854,18 @@ Annotating externally with Org
     "Drag selection, screenshot it, upload to 0x0.st, kill URL."
     (interactive)
     (require '0x0 nil 'noerror)
-    (let* ((time (format-time-string "%b_%d_%H-%M-%S"))
-           (filename (concat "/tmp/" time ".png")))
-      (shell-command (concat "grim -g $(slurp) " filename))
-      (0x0-upload-file (cdr (assq'0x0 0x0-servers)) filename)))
+    (let ((filename (concat "/tmp/" (format-time-string "%b_%d_%H-%M-%S") ".png")))
+      (shell-command (concat "slurp | grim -g - " filename))
+      (0x0-upload-file (cdr (assq '0x0 0x0-servers)) filename)))
   (defun nt/monitorshot (&optional upload)
     "Screenshot active monitor and save to ~Pictures/screenshots or \\
   UPLOAD to 0x0.st."
     (interactive)
-    (require '0x0 nil 'noerror)
-    (let* ((time (format-time-string "%b_%d_%H-%M-%S"))
-           (dir (if upload
-                    "/tmp/"
-                  "~/Pictures/screenshots/"))
-           (filename (concat dir time ".png")))
+    (let ((filename (concat (if upload "/tmp/" "~/Pictures/screenshots/")
+                            (format-time-string "%b_%d_%H-%M-%S") ".png")))
       (shell-command (concat "grim -o eDP-1 " filename))
       (when upload
+        (require '0x0 nil 'noerror)
         (0x0-upload-file (cdr (assq'0x0 0x0-servers)) filename))))
   (defun nt/monitorshot-0x0 ()
     "Upload screenshot of current display to 0x0.st."
