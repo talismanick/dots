@@ -33,6 +33,11 @@ set synctex true
 # status bar can be disabled with A-s
 set font "PT Mono medium 16"
 set zoom-step 3
+# colors
+set recolor   
+set recolor-lightcolor \#222222
+set recolor-keephue
+set default-bg \#2121
 
 map [normal] <C-b> scroll left
 map [normal] <C-n> scroll down

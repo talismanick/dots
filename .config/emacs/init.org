@@ -121,7 +121,7 @@ Always use frames; let the window manager handle layout.
     :custom
     ;; (shackle-default-rule '((".*" :other-frame t)))
     (shackle-rules '(("\\*BQN keymap\\*" :regexp t :frame t :noselect t)
-                     ))
+                     ("\\*Org Select\\*" :regexp t :frame t :noselect t)))
     :hook
     (after-init . shackle-mode))
 #+end_src
@@ -156,8 +156,8 @@ Always use frames; let the window manager handle layout.
     :hook
     (after-init . (lambda () (scroll-bar-mode 0)))
     :custom-face
-    (default ((t (:family "PT Mono"
-                          :height 100
+    (default ((t (:family "FantasqueSansMono Nerd Font"
+                          :height 110
                           :slant normal
                           :weight normal
                           :width normal))))
@@ -176,7 +176,9 @@ Always use frames; let the window manager handle layout.
     (after-init . doom-modeline-mode)
     :custom-face
     (mode-line ((nil (:height 0.9 :weight extralight))))
-    (mode-line-inactive ((nil (:height 0.9 :weight extralight)))))
+    (mode-line-inactive ((nil (:height 0.9 :weight extralight))))
+    (doom-modeline-spc-inactive-face ((nil (:inherit mode-line-inactive))))
+    (doom-modeline-vspc-inactive-face ((nil (:inherit mode-line-inactive)))))
   (use-package minions
     :custom
     (minions-mode-line-lighter "☰")
@@ -268,19 +270,21 @@ Always use frames; let the window manager handle layout.
       # actively try loading theme for 10 seconds
       timeout 10 emacsclient -e "(nt/read-theme)" &
 
-      # TODO: switch yambar config on $9 and fnott on $10
+      echo "${9}" > "${HOME}/.local/run/theme"
+      sv restart yambar
+      sv restart fnott
   }
 
   case "$1" in
       "sakura" )
-          chtheme vimix-dark-laptop Vimix-dark 'Cantarell 11' \
-                  void-mountain.jpg 0x9e9e9e 0x7d7d7d \
-                  doom-themes doom-sakura
+          chtheme vimix-dark-laptop Vimix-dark 'Rounded Mplus 1c 11' \
+                  kamakura-blossom-2.png 0x9e9e9e 0x7d7d7d \
+                  doom-themes doom-sakura sakura
           ;;
       "gondola" )
           chtheme vimix-dark-laptop-amethyst Vimix-dark 'Cantarell 11' \
                   gondola-sitting-on-moon.jpg 0xd49bdb 0x9a83df \
-                  doom-themes doom-Iosvkem
+                  doom-themes doom-Iosvkem gondola
           ;;
       ,*)
           printf "%s is not a valid theme\n" "$1" && return 1
@@ -537,8 +541,8 @@ Bind keymaps to shorten repetitive sequences.
       "Turn rainbow-delimiters on and off to color parentheses without
   triggering mismatched delimiter bugs."
       (interactive)
-      (rainbow-delimiters-enable)
-      (rainbow-delimiters-disable))
+      (rainbow-delimiters-mode-enable)
+      (rainbow-delimiters-mode-disable))
     :hook
     ((prog-mode comint-mode) . rainbow-delimiters-mode)
     (org-mode . nt/rainbow-delimiters-oneshot))
@@ -1837,25 +1841,21 @@ Annotating externally with Org
     :custom
     (nov-text-width 80)
     :preface
-    (defun nt/nov-fontify ()
-      (face-remap-add-relative 'variable-pitch :family "PT Serif"
+    (defun nt/nov-fontify (&optional font)
+      "Set nov.el buffer to use FONT or PT Serif"
+      (interactive "sFont: ")
+      (face-remap-add-relative 'variable-pitch :family (or font "PT Serif")
                                :weight 'light
-                               :height 1.0))
+                               :height (if font (read-number "scaling: ") 1.0)))
     :hook
     (nov-mode . nt/no-line-numbers))
 #+end_src
 *** video
 #+begin_src emacs-lisp :tangle yes
-  (use-package mpv
-    :commands mpv-play
-    :preface
-    (defun nt/mpv-play-url (url)
-      (interactive "sURL: ")
-      (mpv-start url))
-    (defun nt/mpv-audio-only (path)
-      (interactive "fFile: ")
-      (let ((mpv-default-options '("--no-video")))
-       (mpv-play (expand-file-name path)))))
+  (defun nt/mpv-play-url (url)
+   x (interactive "sURL: ")
+    (start-process "mpv" nil "mpv" url)
+    (kill-buffer nil))
 #+end_src
 *** image
 #+begin_src emacs-lisp :tangle yes
