@@ -55,8 +55,8 @@ map [normal] <C-c> copy_link
 map [normal] f follow
 map [normal] m mark_add
 map [normal] \' mark_evaluate
-map [normal] \, navigate next
-map [normal] \. navigate previous
+map [normal] \. navigate next
+map [normal] \, navigate previous
 map [normal] <A-Right> navigate next
 map [normal] <A-Left> navigate previous
 map [normal] <PageDown> scroll full-down

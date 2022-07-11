@@ -1,6 +1,7 @@
 profile home {
 	output eDP-1 mode 1920x1080 position 0,0
 	output HDMI-A-1 mode 1920x1080 position 1920,0
+	exec riverctl focus-output next; sleep 0.3; yambar & riverctl focus-output previous
 }
 
 profile detached {

@@ -101,6 +101,13 @@ all_tags=$(((1 << 32) - 1))
 riverctl map normal $mod 0 set-focused-tags $all_tags
 riverctl map normal $mod+Shift 0 set-view-tags $all_tags
 
+# If riverwm-utils is installed (from PyPI), bind Mod+] and Mod+[ to
+# switch to next and previous tag, respectively
+if [ -x "$(command -v cycle-focused-tags)" ]; then {
+        riverctl map normal $mod Bracketleft spawn "cycle-focused-tags previous 9"
+        riverctl map normal $mod Bracketright spawn "cycle-focused-tags next 9"
+}; fi
+
 # Mod+T to toggle float
 riverctl map normal $mod T toggle-float
 
