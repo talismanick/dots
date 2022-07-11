@@ -16,7 +16,8 @@
         ci = commit
         st = status
         br = branch
-        hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
+	df = diff
+	hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
         type = cat-file -t
         dump = cat-file -p
 
@@ -32,3 +33,29 @@
 	gpgsign = true
 [gpg]
 	program = gpg2
+
+[url "https://github.com/"]
+	insteadOf = gh:
+[url "ssh://git@github.com/"]
+	pushInsteadOf = https://github.com/
+	pushInsteadOf = gh:
+[url "https://gist.github.com/"]
+	insteadOf = gist:
+[url "ssh://git@gist.github.com/"]
+	pushInsteadOf = https://gist.github.com/
+	pushInsteadOf = gist:
+[url "https://gitlab.com/"]
+	insteadOf = gl:
+[url "ssh://git@gitlab.com/./"]
+	pushInsteadOf = https://gitlab.com/
+	pushInsteadOf = gl:
+[url "https://codeberg.org/"]
+	insteadOf = cb:
+[url "ssh://git@codeberg.org/"]
+	pushInsteadOf = https://codeberg.org/
+	pushInsteadOf = cb:
+[url "https://git.sr.ht/"]
+	insteadOf = sr:
+[url "ssh://git@git.sr.ht/"]
+	pushInsteadOf = https://git.sr.ht/
+	pushInsteadOf = sr:
