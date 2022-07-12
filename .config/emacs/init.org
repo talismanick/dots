@@ -1246,9 +1246,9 @@ except for emojis
     (org-startup-with-inline-images t)
     (org-enforce-todo-checkbox-dependencies t)
     :mode ("\\.org\\'" . org-mode))
-  (use-package org-superstar
+  (use-package org-modern
     :hook
-    (org-mode . org-superstar-mode))
+    (org-mode . org-modern-mode))
   (use-package toc-org
     :commands (toc-org toc-org-mode)
     :custom
@@ -1891,7 +1891,7 @@ Annotating externally with Org
         :sasl-username "talismanick"
         :sasl-password (lambda (server) (password-store-get "irc/libera.chat/talismanick"))
         :channels ("#emacs" "#river" "#emacs-circe" "#voidlinux" "#xbps" "#emersion" "#yambar"
-                   "#foot" "#ffmpeg" "#fnott"))
+                   "#foot" "#ffmpeg" "#fnott ##math"))
        ("OFTC"
         :host "irc.oftc.net"
         :port 6697
