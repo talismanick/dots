@@ -1896,9 +1896,10 @@ Annotating externally with Org
         :host "irc.oftc.net"
         :port 6697
         :tls t
-        :nick "talismanick"
+        :nick ,user-real-login-name
         :nickserv-password (lambda (server) (password-store-get "irc/oftc.net/talismanick"))
-        :channels ("#pipewire" "#voidlinux-ppc" "#alpine-linux" "#pwmt")))))
+        :channels (:after-auth "#pipewire" "#voidlinux-ppc" "#alpine-linux" "#pwmt"
+                               "#git-annex")))))
   (use-package circe-notifications
     :custom
     (circe-notifications-watch-strings `(,user-login-name))
