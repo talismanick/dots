@@ -310,7 +310,7 @@ CRUX (Collection of Ridiculously Useful eXtensions) bundles commands which don't
 #+end_src
 Personal info
 #+begin_src emacs-lisp :tangle yes
-  (setq user-full-name "Nick Talin"
+  (setq user-full-name user-login-name
         user-mail-address "talin.nicholas@mailbox.org")
 
 #+end_src
