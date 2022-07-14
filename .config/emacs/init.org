@@ -1887,11 +1887,11 @@ Annotating externally with Org
         :host "irc.libera.chat"
         :port 6697
         :tls t
-        :nick "talismanick"
-        :sasl-username "talismanick"
+        :nick ,user-real-login-name
+        :sasl-username ,user-real-login-name
         :sasl-password (lambda (server) (password-store-get "irc/libera.chat/talismanick"))
         :channels ("#emacs" "#river" "#emacs-circe" "#voidlinux" "#xbps" "#emersion" "#yambar"
-                   "#foot" "#ffmpeg" "#fnott ##math"))
+                   "#foot" "#ffmpeg" "#fnott" "##math"))
        ("OFTC"
         :host "irc.oftc.net"
         :port 6697
