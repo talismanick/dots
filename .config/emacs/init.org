@@ -1246,9 +1246,9 @@ except for emojis
     (org-startup-with-inline-images t)
     (org-enforce-todo-checkbox-dependencies t)
     :mode ("\\.org\\'" . org-mode))
-  (use-package org-modern
+  (use-package org-superstar
     :hook
-    (org-mode . org-modern-mode))
+    (org-mode . org-superstar-mode))
   (use-package toc-org
     :commands (toc-org toc-org-mode)
     :custom
