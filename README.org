@@ -1,0 +1,110 @@
+#+title: =/home/talismanick/.local/dots/=
+talismanick's dotfiles, for Void Linux with GNU Emacs and the river compositor.
+* Installation
+** Required Programs
+Under each header, ordered by decreasing importance to system functionality. Marked /as such/ if
+optional but recommended. Notable dependencies and/or addons listed beneath each
+*** Windowing & Services
+river and anything which is started as a user-level service or interfaces with it.
++ river
++ GNU Emacs
++ pipewire
++ [[https://gitlab.com/snakedye/ristate][ristate]]
+  + jq
++ yambar
++ fnott
++ kanshi
++ /wbg/
++ /wlsunset/
+*** Commandline Utilities
++ GNU Stow
++ pamixer
++ fd
++ ripgrep
++ /playerctl/
+  + dbus
++ /GraphicsMagick/
+*** System
++ bash
++ doas
++ pipewire
+  + wireplumber
+  + dbus
++ keychain
++ Python
++ snooze
++ pass
+  + gnupg
+  + pinentry
++ xtools
+  + /xbps-src/
++ /proot/
++ /socklog-void/
+  + /nanoklogd/
++
+*** Apps
+User-facing programs
++ grim
++ slurp
++ wtype
++ purebred (cabal)
+  + notmuch
++ zathura
++ mpv
+  + /mpv-mpris/
++ imv
+*** Fonts
++ Nerd Fonts TTF
++ Noto Sans CJK
++ Zen Maru Gothic
+***
+* Design Details
+** Input
+This a tiling setup which aims to manage  all windows through the river Wayland compositor, with
+a single  set of keybinds  to manage all window  splitting, movement, workspace  allocation, and
+layout. Emacs keys are  preferred wherever possible, e.g. =s-n= and =s-p=  for next and previous
+tile, respectively. Aside from that, preference is to  stick to default river keys. Plans are in
+the works  to remap  input to external  programs (e.g. Firefox)  using wtype  bound to a  key in
+river.
+
+Emacs being well-suited to anything tangential to editing and text handling, it is preferred as
+an interface to multiple utilities such as =pass=, =git=, IRC, and email. It is launched as a
+daemon on startup, and accessed via a script which either opens the file passed or runs
+~(switch-to-buffer nil)~ if there is none. (as when popped up with =s-e=) It is built from
+source (v29), passing the =--with-pgtk= flag for a native Wayland experience.
+
+As a backup and to run ncurses programs which don't play nice with vterm (brought up inside
+Emacs with =C-c t=), the foot terminal emulator can be brought up with =s-S-<ret>=.
+** Runit User Services
+Any kind of long-running service which either needs user-defined envvars (like ~XDG_RUNTIME_DIR~
+for Pipewire) or which runs with per-user settings (like wlsunset) are started as userland runit
+services in the river init with ~runsvdir -P "${HOME}/.local/service"~. The service folders
+there are symlinked from =${HOME}/.config/sv=, mirroring the relation between =/etc/sv/= and
+=/var/service/= on Void Linux.
+** Languages
+Up to Elixir, first-class support (setups vetted by regular usage) is provided for programming
+the following languages
++ Lisp
+  + Emacs
+  + Common
++ C/C++
++ Python
++ shell (Bash, POSIX)
++ APL
+  + BQN
+  + GNU APL
++ Haskell
++ Maxima
++ Elixir
++ Erlang
++ Prolog
++ Rust
++ Julia
++ Fortran
++ Matlab
++ R
++ Lean
++ Racket
++ J
+* License
+Released under the [[./LICENSE][AGPLv3 (or later) License]]
