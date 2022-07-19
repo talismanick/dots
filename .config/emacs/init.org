@@ -973,7 +973,9 @@ Interactively pipe and transform unstructured textual data.
     :custom
     (lsp-haskell-formatting-provider "brittany")
     :hook
-    ((haskell-mode haskell-literate-mode) . lsp))
+    ((haskell-mode haskell-literate-mode) . lsp)
+    :config
+    (push 'haskell lsp-enabled-clients))
 #+end_src
 **** proof
 #+begin_src emacs-lisp :tangle yes
